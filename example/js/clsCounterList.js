@@ -1,0 +1,62 @@
+/** @jsx html */
+
+import {h, html } from 'zaitun';
+
+import clsCounter from './clsCounter';
+
+const Counter=new clsCounter();
+
+const ADD=Symbol('add');
+const REMOVE=Symbol('remove');
+const RESET=Symbol('reset');
+const UPDATE=Symbol('counterAction');
+
+export default class clsCounterList{
+    
+    init(){
+        return {nextId:0, counters:[]}; 
+    }   
+    view({model, handler}){
+        return <div classNames="card card-outline-secondary mb-3 text-center">
+                    <div classNames="card-block">
+                          <button classNames="btn btn-primary btn-sm" on-click={[handler,{type:ADD}]}>Add</button>&nbsp;
+                          <button classNames="btn btn-primary btn-sm" on-click={[handler, {type:RESET}]}>Reset</button>
+                          <hr/>
+                          <div>{ model.counters.map(item => <this.CounterItem item={item} handler={handler} />) }</div>
+                    </div>
+                </div>
+    }
+    CounterItem({item, handler}){
+        return <div key={item.id} style={({paddingBottom:'10px'})}>
+                <button classNames="btn btn-primary btn-sm" on-click={ [handler, {type:REMOVE, id:item.id}] }>Remove</button>&nbsp;
+                <Counter model={item.counter} handler={ action => handler({type:UPDATE, id:item.id, action:action})  } />
+              </div>;
+    }
+    update(model, action){
+        switch (action.type) {
+            case ADD:
+                const newCounter = {id: model.nextId, counter: Counter.init() };
+                return {
+                    counters  : [...model.counters, newCounter],
+                    nextId    : model.nextId + 1
+                };               
+             case UPDATE:
+                return {
+                    nextId: model.nextId,
+                    counters:model.counters.map(item=>
+                    item.id !== action.id ?
+                    item : {...item, counter:Counter.update(item.counter, action.action)}
+                    )
+                }
+            case RESET:
+                return{
+                    ...model,
+                    counters:model.counters.map(item=>{item.counter=Counter.init();return item;})
+                }
+            case REMOVE:               
+                return {...model, counters: [...model.counters.filter(it=>it.id!==action.id)]};   
+            default:
+                return model;
+        }
+    }
+}

@@ -141,8 +141,8 @@ class ComponentManager{
     }
     destroy(path){
         try{
-               if(this.child && typeof this.child.canDeactive==='function'){
-                   const res=this.child.canDeactive();
+               if(this.child && typeof this.child.canDeactivate==='function'){
+                   const res=this.child.canDeactivate();
                    if(typeof res === 'object' && res.then){
                        res.then(val=>{
                             if(val){
