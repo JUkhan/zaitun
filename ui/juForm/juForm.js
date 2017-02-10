@@ -1,4 +1,4 @@
-import h from 'snabbdom/h';
+import {h} from 'zaitun';
 import {guid} from '../utils';
 const TAB_CLICK=Symbol('TAB_CLICK');
 const OptionsChanged=Symbol('OptionsChanged');
