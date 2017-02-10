@@ -1,11 +1,13 @@
 {
-  "name": "zaitun",
+  "name": "@zaitun/dom",
   "version": "1.0.0",
   "description": "javascript framework",
   "main": "index.js",
+  "typings": "lib/index.d.ts",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "mocha --reporter spec",
-    "browserify": "./node_modules/.bin/browserify index.js -t babelify --standalone ZaitunCore -o dist/zaitun-core.js"
+    "browserify": "../node_modules/.bin/browserify lib/index.js -t babelify --standalone ZaitunDom -o dist/zaitun-dom.js"
   },
   "repository": {
     "type": "git",
@@ -21,20 +23,11 @@
   },
   "homepage": "https://github.com/JUkhan/zaitun#readme",
   "devDependencies": {   
-    "babel-cli": "6.10.1",
-    "babel-core": "6.20.0",
-    "babel-preset-es2015": "6.13.2",
-    "babel-register": "^6.11.6",
-    "babelify": "7.3.0",
-    "browserify": "13.1.0",
-    "browserify-shim": "3.8.12",
-    "tslint": "4.0.2",
-    "typescript": "2.1.6",
-    "typings": "2.0.0",
-    "uglify-js": "2.7.5"  
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0"
   },
   "dependencies": {
-      "snabbdom": "^0.5.0",
-      "snabbdom-jsx": "^0.3.1"
+    "snabbdom": "^0.5.0",
+    "snabbdom-jsx": "^0.3.1"
   }
 }

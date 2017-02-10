@@ -1,12 +1,7 @@
 
-'use strict';
+const h =require('snabbdom/h');
+const {html, svg} =require('snabbdom-jsx');
+const bootstrap =require('./core');
+const Router =require('./router');
 
-/**
- * Adds commas to a number
- * @param {number} number
- * @param {string} locale
- * @return {string}
- */
-module.exports = function(number, locale) {
-    return number.toLocaleString(locale);
-};
+module.exports= {h, html, svg, bootstrap, Router}
