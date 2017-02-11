@@ -1,0 +1,28 @@
+{
+  "name": "zaitun",
+  "version": "1.5.3",
+  "description": "javascript framework",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --reporter spec",
+    "browserify": "./node_modules/.bin/browserify index.js -t babelify --standalone ZaitunCore -o dist/zaitun-core.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JUkhan/zaitun.git"
+  },
+  "keywords": [
+    "zaitun"
+  ],
+  "author": "jasim uddin khan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JUkhan/zaitun/issues"
+  },
+  "homepage": "https://github.com/JUkhan/zaitun#readme",
+  
+  "dependencies": {
+      "snabbdom": "^0.5.0",
+      "snabbdom-jsx": "^0.3.1"
+  }
+}
