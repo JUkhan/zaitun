@@ -6,11 +6,13 @@ import {juForm, TAB_CLICK} from './ui/juForm/juForm';
 import clsCounter from './clsCounter';
 import clsCounterList from './clsCounterList';
 import Todos from './todos/todos';
+import {juGrid} from './ui/juGrid/juGrid';
 
 const JuForm=new juForm();
 const Counter=new clsCounter();
 const CounterList=new clsCounterList();
 const TodosCom=new Todos();
+const Grid=new juGrid();
 
 export default class FormExample{
     
@@ -19,6 +21,7 @@ export default class FormExample{
        model.options=this.getFormOptions(model, dispatch);
        model.counterList=CounterList.init();
        model.todos=TodosCom.init();
+       model.grid=Grid.init();
        return model;
     }
     //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
@@ -31,7 +34,8 @@ export default class FormExample{
                     {field:'age2', label:'Adress2', success:true, type:'text', size:3}],
                                             
                     {field:'gender', required:true, ignoreLabelSWD:1, warning:'warning', on:{change:val=>console.log(val)}, size:5, type:'select', label:'Gender', data:[{text:'Male', value:1},{text:'Female', value:2}]},
-                    {type:'tabs',  activeTab:'Counter', footer:<div>Footer</div>, tabs:{
+                    {type:'tabs',  activeTab:'Grid', footer:<div>Footer</div>, tabs:{
+                        
                         Counter:{ inputs:[
                             {type:'vnode', vnode:<div style={({height:'20px'})}></div>},
                                 { size:3, 
@@ -56,7 +60,17 @@ export default class FormExample{
                                     component:TodosCom,
                                     field:'todos'
                                 }
-                        ]}
+                        ]},
+                        Grid:{
+                            inputs:[
+                                {
+                                    type:'component',
+                                    actionType:'grid',
+                                    component:Grid,
+                                    field:'grid'
+                                }
+                            ]
+                        }
                     }}            
                 ]   
         };

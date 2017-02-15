@@ -27,7 +27,7 @@ var Router = {
     clearSlashes: function(path) {
         return path.toString().replace(/\/$/, '').replace(/^\//, '');
     },
-    attach(cm){
+    attach:function(cm){
         this.CM=new cm();
         this.CM.run(this.mainComponent);
         if(this.devTool){           
@@ -40,11 +40,11 @@ var Router = {
         return this;
     },
     remove: function(pathName) {
-        this.routes=this.routes.filter(it=>it.path!==pathName);
+        this.routes=this.routes.filter(function(it){return it.path!==pathName;});
         return this;
     },   
     check: function (hash) {
-        var reg, keys, match, routeParams;
+        var keys, match, routeParams;
         for (var i = 0, max = this.routes.length; i < max; i++ ) {
             if(this.clearSlashes(this.routes[i].path)===hash){
                 this.render(this.routes[i], null, hash);
@@ -67,16 +67,16 @@ var Router = {
         return this;
     },       
     listen: function() {
-
-        window.addEventListener("hashchange", (ev)=>{             
-             this.check(this.getFragment());
+        var that=this;
+        window.addEventListener("hashchange", function(ev){             
+             that.check(that.getFragment());
         }, false);
 
-        Array.from(document.querySelectorAll('a')).forEach(it=>{
-            it.addEventListener('click',ev=>{
+        Array.from(document.querySelectorAll('a')).forEach(function(it){
+            it.addEventListener('click',function(ev){
                ev.preventDefault();
-               if(this.clearSlashes(ev.target.href)===this.clearSlashes(window.location.href)) {return;} 
-               this.CM.destroy(ev.target.href);
+               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;} 
+               that.CM.destroy(ev.target.href);
             },false);
         })
         return this;
@@ -90,12 +90,12 @@ var Router = {
         }
         return this;
     },    
-    setActivePath(path){  
+    setActivePath:function(path){  
         if(path){    
             this.check(this.clearSlashes(this.getFragment()||path));
         }
     },
-    render(route, routeParams, url){   
+    render:function(route, routeParams, url){   
         window.activePath=route.path;
         this.CM.runChild(route, routeParams, url);               
     }

@@ -2,11 +2,10 @@
 const Router =require('./router');
 const snabbdom =require('snabbdom');
 
-var newVnode=null;
 var vnode=null;
 
 function bootstrap(options){   
-    DOMReady(()=>{
+    DOMReady(function(){
         if(!options.containerDom){
             throw new Error('mountNode must be a css selector or a dom object');
         }
@@ -40,20 +39,19 @@ const patch = snabbdom.init([
 ]);
 const h =require('snabbdom/h');
 
-class ComponentManager{
-    constructor(){
-        this.mcom={};
-        this.child={
-            init(){return {};}, 
-            view({}){return h('div','loading...');}
-        };
-        this.model={};
-        this.params=null;
-        this.devTool=null;
-        this.key='';
-        this.cacheObj={};
-    }
-    initMainComponent(component){
+function ComponentManager(){    
+    this.mcom={};
+    this.child={
+        init:function(){return {};}, 
+        view:function(obj){return h('div','loading...');}
+    };
+    this.model={};
+    this.params=null;
+    this.devTool=null;
+    this.key='';
+    this.cacheObj={};
+   
+   this.initMainComponent=function(component){
         
         if(typeof component ==='object'){
             this.mcom=component;
@@ -72,7 +70,7 @@ class ComponentManager{
             throw new Error('Component must have a update function');
         }
     }
-    initChildComponent(component){
+    this.initChildComponent=function(component){
         
         if(typeof component ==='object'){
             this.child=component;
@@ -91,18 +89,18 @@ class ComponentManager{
             throw new Error('Component must have a update function');
         }
     }
-    reset(){
+    this.reset=function(){
         this.model=this.mcom.init(this.dispatch, this.params);
         if(typeof this.child.init ==='function'){
              this.model.child=this.child.init(this.dispatch, this.params);
         }       
         this.updateUI();
     }
-    updateByModel(model){
+    this.updateByModel=function(model){
         this.model=model;
         this.updateUI();
     }    
-    runChild(route, params, url){
+    this.runChild=function(route, params, url){
         this.params=params;
         this.initChildComponent(route.component);
         this.key=route.cache?url:'';
@@ -112,24 +110,24 @@ class ComponentManager{
             this.devTool.reset();
         }      
     }
-    run(component){        
+    this.run=function(component){        
         this.initMainComponent(component);
         this.model=this.mcom.init(this.dispatch);        
         this.updateUI();            
     }
-    updateUI() {
+    this.updateUI=function() {
         const newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
         vnode = patch(vnode, newVnode);
     }
 
-    dispatch(action) {        
+    this.dispatch=function(action) {        
         this.model = this.mcom.update(this.model, action);  
         if(this.devTool){
             this.devTool.setAction(action, this.model);
         }      
         this.updateUI();
     }
-    fireDestroyEvent(){
+    this.fireDestroyEvent=function(){
        
             if(this.key){
                 this.setModelToCache(this.key, this.model.child);
@@ -139,15 +137,16 @@ class ComponentManager{
             }
 
     }
-    destroy(path){
+    this.destroy=function(path){
         try{
                if(this.child && typeof this.child.canDeactivate==='function'){
                    const res=this.child.canDeactivate();
                    if(typeof res === 'object' && res.then){
-                       res.then(val=>{
+                       var that=this;
+                       res.then(function(val){
                             if(val){
                                  window.location.href=path;
-                                 this.fireDestroyEvent();
+                                 that.fireDestroyEvent();
                             }
                        });
                    }
@@ -163,10 +162,10 @@ class ComponentManager{
                   console.log(ex);
               }
     }
-    getModelFromCache(key){
+    this.getModelFromCache=function(key){
         return  this.cacheObj[key]||{};
     }
-    setModelToCache(key, value){
+    this.setModelToCache=function(key, value){
          this.cacheObj[key]=value;
     }
 }

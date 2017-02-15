@@ -717,18 +717,11 @@ module.exports = function(sel, data, children, text, elm) {
 },{}],11:[function(require,module,exports){
 'use strict';
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-function _objectDestructuringEmpty(obj) { if (obj == null) throw new TypeError("Cannot destructure undefined"); }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Router = require('./router');
 var snabbdom = require('snabbdom');
 
-var newVnode = null;
 var vnode = null;
 
 function bootstrap(options) {
@@ -762,187 +755,148 @@ require('snabbdom/modules/style'), // handles styling on elements with support f
 require('snabbdom/modules/eventlisteners')]);
 var h = require('snabbdom/h');
 
-var ComponentManager = function () {
-    function ComponentManager() {
-        _classCallCheck(this, ComponentManager);
-
-        this.mcom = {};
-        this.child = {
-            init: function init() {
-                return {};
-            },
-            view: function view(_ref) {
-                _objectDestructuringEmpty(_ref);
-
-                return h('div', 'loading...');
-            }
-        };
-        this.model = {};
-        this.params = null;
-        this.devTool = null;
-        this.key = '';
-        this.cacheObj = {};
-    }
-
-    _createClass(ComponentManager, [{
-        key: 'initMainComponent',
-        value: function initMainComponent(component) {
-
-            if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
-                this.mcom = component;
-            } else if (typeof component === 'function') {
-                this.mcom = new component();
-            }
-
-            if (typeof this.mcom.init !== 'function') {
-                throw new Error('Component must have a init function');
-            }
-            if (typeof this.mcom.view !== 'function') {
-                throw new Error('Component must have a view function');
-            }
-            if (typeof this.mcom.update !== 'function') {
-                throw new Error('Component must have a update function');
-            }
+function ComponentManager() {
+    this.mcom = {};
+    this.child = {
+        init: function init() {
+            return {};
+        },
+        view: function view(obj) {
+            return h('div', 'loading...');
         }
-    }, {
-        key: 'initChildComponent',
-        value: function initChildComponent(component) {
+    };
+    this.model = {};
+    this.params = null;
+    this.devTool = null;
+    this.key = '';
+    this.cacheObj = {};
 
-            if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
-                this.child = component;
-            } else if (typeof component === 'function') {
-                this.child = new component();
-            }
+    this.initMainComponent = function (component) {
 
-            if (typeof this.child.init !== 'function') {
-                throw new Error('Component must have a init function');
-            }
-            if (typeof this.child.view !== 'function') {
-                throw new Error('Component must have a view function');
-            }
-            if (typeof this.child.update !== 'function') {
-                throw new Error('Component must have a update function');
-            }
+        if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
+            this.mcom = component;
+        } else if (typeof component === 'function') {
+            this.mcom = new component();
         }
-    }, {
-        key: 'reset',
-        value: function reset() {
-            this.model = this.mcom.init(this.dispatch, this.params);
-            if (typeof this.child.init === 'function') {
-                this.model.child = this.child.init(this.dispatch, this.params);
-            }
-            this.updateUI();
-        }
-    }, {
-        key: 'updateByModel',
-        value: function updateByModel(model) {
-            this.model = model;
-            this.updateUI();
-        }
-    }, {
-        key: 'runChild',
-        value: function runChild(route, params, url) {
-            this.params = params;
-            this.initChildComponent(route.component);
-            this.key = route.cache ? url : '';
-            this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
-            this.updateUI();
-            if (this.devTool) {
-                this.devTool.reset();
-            }
-        }
-    }, {
-        key: 'run',
-        value: function run(component) {
-            this.initMainComponent(component);
-            this.model = this.mcom.init(this.dispatch);
-            this.updateUI();
-        }
-    }, {
-        key: 'updateUI',
-        value: function updateUI() {
-            var newVnode = this.mcom.view({ model: this.model, dispatch: this.dispatch.bind(this) });
-            vnode = patch(vnode, newVnode);
-        }
-    }, {
-        key: 'dispatch',
-        value: function dispatch(action) {
-            this.model = this.mcom.update(this.model, action);
-            if (this.devTool) {
-                this.devTool.setAction(action, this.model);
-            }
-            this.updateUI();
-        }
-    }, {
-        key: 'fireDestroyEvent',
-        value: function fireDestroyEvent() {
 
-            if (this.key) {
-                this.setModelToCache(this.key, this.model.child);
-            }
-            if (typeof this.child.onDestroy === 'function') {
-                this.child.onDestroy();
-            }
+        if (typeof this.mcom.init !== 'function') {
+            throw new Error('Component must have a init function');
         }
-    }, {
-        key: 'destroy',
-        value: function destroy(path) {
-            var _this = this;
+        if (typeof this.mcom.view !== 'function') {
+            throw new Error('Component must have a view function');
+        }
+        if (typeof this.mcom.update !== 'function') {
+            throw new Error('Component must have a update function');
+        }
+    };
+    this.initChildComponent = function (component) {
 
-            try {
-                if (this.child && typeof this.child.canDeactivate === 'function') {
-                    var res = this.child.canDeactivate();
-                    if ((typeof res === 'undefined' ? 'undefined' : _typeof(res)) === 'object' && res.then) {
-                        res.then(function (val) {
-                            if (val) {
-                                window.location.href = path;
-                                _this.fireDestroyEvent();
-                            }
-                        });
-                    } else if (res) {
-                        window.location.href = path;
-                        this.fireDestroyEvent();
-                    }
-                } else {
+        if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
+            this.child = component;
+        } else if (typeof component === 'function') {
+            this.child = new component();
+        }
+
+        if (typeof this.child.init !== 'function') {
+            throw new Error('Component must have a init function');
+        }
+        if (typeof this.child.view !== 'function') {
+            throw new Error('Component must have a view function');
+        }
+        if (typeof this.child.update !== 'function') {
+            throw new Error('Component must have a update function');
+        }
+    };
+    this.reset = function () {
+        this.model = this.mcom.init(this.dispatch, this.params);
+        if (typeof this.child.init === 'function') {
+            this.model.child = this.child.init(this.dispatch, this.params);
+        }
+        this.updateUI();
+    };
+    this.updateByModel = function (model) {
+        this.model = model;
+        this.updateUI();
+    };
+    this.runChild = function (route, params, url) {
+        this.params = params;
+        this.initChildComponent(route.component);
+        this.key = route.cache ? url : '';
+        this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
+        this.updateUI();
+        if (this.devTool) {
+            this.devTool.reset();
+        }
+    };
+    this.run = function (component) {
+        this.initMainComponent(component);
+        this.model = this.mcom.init(this.dispatch);
+        this.updateUI();
+    };
+    this.updateUI = function () {
+        var newVnode = this.mcom.view({ model: this.model, dispatch: this.dispatch.bind(this) });
+        vnode = patch(vnode, newVnode);
+    };
+
+    this.dispatch = function (action) {
+        this.model = this.mcom.update(this.model, action);
+        if (this.devTool) {
+            this.devTool.setAction(action, this.model);
+        }
+        this.updateUI();
+    };
+    this.fireDestroyEvent = function () {
+
+        if (this.key) {
+            this.setModelToCache(this.key, this.model.child);
+        }
+        if (typeof this.child.onDestroy === 'function') {
+            this.child.onDestroy();
+        }
+    };
+    this.destroy = function (path) {
+        try {
+            if (this.child && typeof this.child.canDeactivate === 'function') {
+                var res = this.child.canDeactivate();
+                if ((typeof res === 'undefined' ? 'undefined' : _typeof(res)) === 'object' && res.then) {
+                    var that = this;
+                    res.then(function (val) {
+                        if (val) {
+                            window.location.href = path;
+                            that.fireDestroyEvent();
+                        }
+                    });
+                } else if (res) {
                     window.location.href = path;
                     this.fireDestroyEvent();
                 }
-            } catch (ex) {
-                console.log(ex);
+            } else {
+                window.location.href = path;
+                this.fireDestroyEvent();
             }
+        } catch (ex) {
+            console.log(ex);
         }
-    }, {
-        key: 'getModelFromCache',
-        value: function getModelFromCache(key) {
-            return this.cacheObj[key] || {};
-        }
-    }, {
-        key: 'setModelToCache',
-        value: function setModelToCache(key, value) {
-            this.cacheObj[key] = value;
-        }
-    }]);
-
-    return ComponentManager;
-}();
+    };
+    this.getModelFromCache = function (key) {
+        return this.cacheObj[key] || {};
+    };
+    this.setModelToCache = function (key, value) {
+        this.cacheObj[key] = value;
+    };
+}
 //export default bootstrap;
-
-
 module.exports = bootstrap;
 
 },{"./router":13,"snabbdom":9,"snabbdom/h":2,"snabbdom/modules/class":5,"snabbdom/modules/eventlisteners":6,"snabbdom/modules/props":7,"snabbdom/modules/style":8}],12:[function(require,module,exports){
 'use strict';
 
 var h = require('snabbdom/h');
-
-var _require = require('snabbdom-jsx'),
-    html = _require.html,
-    svg = _require.svg;
-
+var jsx = require('snabbdom-jsx');
 var bootstrap = require('./core');
 var Router = require('./router');
 
-module.exports = { h: h, html: html, svg: svg, bootstrap: bootstrap, Router: Router };
+module.exports = { h: h, html: jsx.html, svg: jsx.svg, bootstrap: bootstrap, Router: Router };
 
 },{"./core":11,"./router":13,"snabbdom-jsx":1,"snabbdom/h":2}],13:[function(require,module,exports){
 'use strict';
@@ -984,7 +938,6 @@ var Router = {
         }
         return this;
     },
-
     add: function add(router) {
         this.routes.push(router);
         return this;
@@ -996,7 +949,7 @@ var Router = {
         return this;
     },
     check: function check(hash) {
-        var reg, keys, match, routeParams;
+        var keys, match, routeParams;
         for (var i = 0, max = this.routes.length; i < max; i++) {
             if (this.clearSlashes(this.routes[i].path) === hash) {
                 this.render(this.routes[i], null, hash);
@@ -1019,19 +972,18 @@ var Router = {
         return this;
     },
     listen: function listen() {
-        var _this = this;
-
+        var that = this;
         window.addEventListener("hashchange", function (ev) {
-            _this.check(_this.getFragment());
+            that.check(this.getFragment());
         }, false);
 
         Array.from(document.querySelectorAll('a')).forEach(function (it) {
             it.addEventListener('click', function (ev) {
                 ev.preventDefault();
-                if (_this.clearSlashes(ev.target.href) === _this.clearSlashes(window.location.href)) {
+                if (that.clearSlashes(ev.target.href) === that.clearSlashes(window.location.href)) {
                     return;
                 }
-                _this.CM.destroy(ev.target.href);
+                that.CM.destroy(ev.target.href);
             }, false);
         });
         return this;

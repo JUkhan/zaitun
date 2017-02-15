@@ -9,7 +9,13 @@ const DEC=Symbol('dec');
 export default class clsCounter{ 
     init(){       
         return {data:10}
-    }   
+    } 
+    onDestroy(){
+        console.log('ondestroy');
+    }  
+    canDeactivate(){
+        return confirm('leave?')
+    }
     view({model, dispatch}){
          return <span>
                     <button classNames="btn btn-primary btn-sm" on-click={ [dispatch, {type:INC}] }>+</button>&nbsp;

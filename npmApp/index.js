@@ -1,7 +1,7 @@
 
 const h =require('snabbdom/h');
-const {html, svg} =require('snabbdom-jsx');
+const jsx =require('snabbdom-jsx');
 const bootstrap =require('./core');
 const Router =require('./router');
 
-module.exports= {h, html, svg, bootstrap, Router}
+module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router}
