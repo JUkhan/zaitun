@@ -2,7 +2,8 @@ import {h} from 'zaitun';
 import {guid} from '../utils';
 
 const TAB_CLICK=Symbol('TAB_CLICK');
-const OptionsChanged=Symbol('OptionsChanged');
+const OPTIONS_CHANGED=Symbol('OPTIONS_CHANGED');
+
 class juForm{
     constructor(){
         this.dispatch=undefined;
@@ -12,15 +13,22 @@ class juForm{
     init(){
         return {};
     }
-    view({model, dispatch, options}){
+    view({model, dispatch}){
         this.dispatch=dispatch;
-        this.options=options; 
-        this.model=model;    
-        const vnodes=h('div.juForm', this.createElements(options));
-        return options.viewMode==='form'?vnodes:this.createModal(vnodes, this.modalId);
+        this.options=model.options; 
+        this.model=model; 
+         if(!model.data){
+            model.data={};
+         }
+         if(!this.options){
+             return h('div','juForm options is not defined');
+         }  
+        const vnodes=h('div.juForm', this.createElements(this.options));
+        return this.options.viewMode==='form'?vnodes:this.createModal(vnodes, this.modalId);
     }
     update(model, action){
         return model;
+           
     }
     createElements(options){
         const vnodes=[];
@@ -168,9 +176,7 @@ class juForm{
                     tabcontents.push(h(`div.tab-item`, this.createElements(item.tabs[tabName])));
                 }
             }
-        });
-        //elms.push(h(`ul.nav.nav-tabs.justify-content-${item.tabPos||'start'}`, lies));       
-        //elms.push(h('div.tab-content', tabcontents));   
+        });        
         elms.push(h('div.card',[
             h('div.card-header',[ h(`ul.nav nav-tabs card-header-tabs pull-xs-left`, lies)]),
             h('div.card-block', tabcontents),
@@ -179,7 +185,7 @@ class juForm{
         return elms;
     }
     getListener(item){
-       let events={}, hasChange=null, modelUpdateEvent='change';
+       let events={}, hasChange=null, modelUpdateEvent='input';
         if(typeof item.on ==='object'){
             for(let eventName in item.on){
                 if(eventName===modelUpdateEvent){
@@ -189,8 +195,8 @@ class juForm{
                 }
             }            
         } 
-        events[modelUpdateEvent]=e=>{               
-                    this.model[item.field]=e.target.value;
+        events[modelUpdateEvent]=e=>{
+                    this.setValueToData(item, e.target.value);
                     if(hasChange){
                         hasChange(e.target.value, e);
                     }
@@ -212,7 +218,7 @@ class juForm{
          return h(`div.col-md-${item.size||4}`,buttons);
     }    
     createButtonElm(item, index=0){        
-        return h(`button${item.elmSize?'.btn-'+item.elmSize:''}`,
+        return h(`button${item.classNames||''}${item.elmSize?'.btn-'+item.elmSize:''}`,
          {key:index, on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, disabled:!!item.disabled}},
          item.label
          );
@@ -245,6 +251,34 @@ class juForm{
          }     
          return labelItems;
     }
+    getValueFromData(item)
+    {
+        let props = item.field.split('.');
+        if (props.length > 1)
+        {
+            let obj = this.model.data;
+            props.forEach(prop => obj = obj[prop]);
+            return obj;
+        }
+        return this.model.data[item.field];
+    }
+    
+    setValueToData(item, val)
+    { 
+        let props = item.field.split('.');
+        if (props.length > 1)
+        {
+            let obj = this.model.data;
+            let len = props.length - 1;
+            for (var index = 0; index < len; index++)
+            {
+                obj = obj[props[index]];
+            }
+            obj[props[index]] = val;
+        }
+        else { this.model.data[item.field] = val; }
+        
+    }
     createElement(item, index){   
         if(item.hide)return [];    
         const children=[];
@@ -260,7 +294,7 @@ class juForm{
             children.push(this.createSelect(item, state));
         }else{
             children.push(h(`input.form-control${state[1]}${item.elmSize?'.form-control-'+item.elmSize:''}`,
-            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.model[item.field], disabled:!!item.disabled}}));
+            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled}}));
         }
         if(state[2]){ 
              children.push(h(`div.form-control-feedback`, state[2]));
@@ -278,7 +312,7 @@ class juForm{
    createSelect(item, state){
        if(!item.data)item.data=[];
        return h(`select.form-control${state[1]}${item.elmSize?'.form-control-'+item.elmSize:''}`,
-            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.model[item.field], disabled:!!item.disabled, multiple:!!item.multiple}},
+            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled, multiple:!!item.multiple}},
                 item.data.map((it, index)=>h('option',{props:{value:it.value, key:index }}, it.text))
             );
         
@@ -327,21 +361,21 @@ class juForm{
             if(typeof res ==='boolean'){
                 if(res){ 
                     item.activeTab=tabName;
-                    this.dispatch({type:TAB_CLICK,form:this.options.name||'oo7', payload:this.model});
+                    this.dispatch({type:TAB_CLICK, payload:{tabName,formName:this.options.name||'oo7'}});
                 }
             }
             else if(typeof res ==='object' && res.then){
                 res.then(isTrue=>{
                     if(isTrue){
                         item.activeTab=tabName;
-                        this.dispatch({type:TAB_CLICK,form:this.options.name||'oo7', payload:this.model});
+                        this.dispatch({type:TAB_CLICK,form:this.options.name||'oo7', payload:{tabName,formName:this.options.name||'form007'}});
                     }
                 })
             }
        }
    }
    optionsChanged(){
-        this.dispatch({type:OptionsChanged});
+        this.dispatch({type:OPTIONS_CHANGED});
    }
    showModal(isOpen){ 
        $('#'+this.modalId).modal(isOpen?'show':'hide');
@@ -352,6 +386,13 @@ class juForm{
            item.data=data;
            this.optionsChanged();
        }
+   }
+   setFormData(data){
+       this.model.data=data;
+       this.optionsChanged();
+   }
+   getFormData(){
+       return  this.model.data;
    }
 }
 

@@ -8,7 +8,7 @@ import clsCounterList from './clsCounterList';
 import Todos from './todos/todos';
 import {juGrid} from './ui/juGrid/juGrid';
 
-const JuForm=new juForm();
+const TestForm=new juForm();
 const Counter=new clsCounter();
 const CounterList=new clsCounterList();
 const TodosCom=new Todos();
@@ -17,12 +17,23 @@ const Grid=new juGrid();
 export default class FormExample{
     
     init(dispatch){       
-       const model={counter:Counter.init(), name:'Abdulla',age:32, gender:2}
+       const model={};
+       model.data={name:'Abdulla',ox:{age:32}, gender:2};
        model.options=this.getFormOptions(model, dispatch);
+       model.counter=Counter.init();
        model.counterList=CounterList.init();
        model.todos=TodosCom.init();
-       model.grid=Grid.init();
+       model.grid=this.gridOptions();
        return model;
+    }
+    gridOptions(){
+        return {
+            columns:[
+                {header:'Name', field:'name'},
+                {header:'Age', field:'age'},
+                {header:'Address', field:'address'},
+            ]
+        }
     }
     //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
     getFormOptions(model, dispatch){
@@ -30,10 +41,10 @@ export default class FormExample{
         return {
             viewMode:'form', name:'form1', labelSize:1, labelPos:'left', title:'Form Title',
                  inputs:[    
-                    [{field:'age', required:true, danger:'danger', label:'Adress', type:'text', size:3},
+                    [{field:'ox.age',  required:true, danger:'danger', label:'Adress', type:'text', size:3},
                     {field:'age2', label:'Adress2', success:true, type:'text', size:3}],
                                             
-                    {field:'gender', required:true, ignoreLabelSWD:1, warning:'warning', on:{change:val=>console.log(val)}, size:5, type:'select', label:'Gender', data:[{text:'Male', value:1},{text:'Female', value:2}]},
+                    {field:'gender', required:true, ignoreLabelSWD:1, warning:'warning', on:{input:val=>console.log(val)}, size:5, type:'select', label:'Gender', data:[{text:'Male', value:1},{text:'Female', value:2}]},
                     {type:'tabs',  activeTab:'Grid', footer:<div>Footer</div>, tabs:{
                         
                         Counter:{ inputs:[
@@ -63,6 +74,7 @@ export default class FormExample{
                         ]},
                         Grid:{
                             inputs:[
+                                {type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
                                 {
                                     type:'component',
                                     actionType:'grid',
@@ -75,7 +87,15 @@ export default class FormExample{
                 ]   
         };
     }
-    
+    loadData(dispatch){
+       
+        let data=[];
+        for(let i=0;i<5;i++){
+            data.push({name:'Abdulla'+i, age:32, address:'Bangladesh'});
+        }
+        Grid.setData(data);
+    //dispatch({type:'setData'});
+    }
     view({model, dispatch}){    
         this.model=model;
         return <div>
@@ -83,11 +103,11 @@ export default class FormExample{
          <button on-click={this.optionChanged.bind(this)}>Hide Name</button>
          
         </div>
-            <JuForm model={model} dispatch={dispatch} options={model.options}/>
+            <TestForm model={model} dispatch={dispatch} />
             
         </div>
     }
-    update(model, action){       
+    update(model, action){   
         switch (action.type) {
             case 'Counter':
                 const res=Counter.update(model.counter, action.action);                   
@@ -100,7 +120,12 @@ export default class FormExample{
                 const todos=TodosCom.update(model.todos, action.action); 
                 return {...model, todos:todos}; 
             case TAB_CLICK:
+                console.log(action.payload)
                 return model;
+            case 'grid':
+                const grid=Grid.update(model.grid, action.action);
+               
+                return {...model, grid:grid};
             default:
                return model;
         }
@@ -111,8 +136,11 @@ export default class FormExample{
           //this.options.inputs[4].tabs.tab1.hide=false;
           //this.options.inputs[4].tabs.tab1.disabled=false;
         //JuForm.optionsChanged();
-       JuForm.setSelectData('gender',[{text:'Male--', value:1},{text:'Female--', value:2}]);
-        JuForm.showModal(true);
+       TestForm.setSelectData('gender',[{text:'Male--', value:1},{text:'Female--', value:2}]);
+       //JuForm.showModal(true);
+       console.log(TestForm.getFormData());
+       TestForm.setFormData({name:'Abdulla-up',ox:{age:2.2}, gender:1, age2:'hello mamma'})
+       console.log(TestForm.getFormData());
     }
 
 }

@@ -21,5 +21,5 @@ bootstrap({
   //locationStrategy:'hash',
   routes:routes,
   activePath:'/counter',
-  //devTool:devTool
+  devTool:devTool
 });
