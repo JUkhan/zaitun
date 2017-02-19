@@ -28,12 +28,29 @@ export default class FormExample{
     }
     gridOptions(){
         return {
+            singleSelect:true, xmuitiSelect:true,
+            selectedRows:rows=>console.log(rows),
+            //on:{dblclick:(row, i, ev)=>{console.log(row, i, ev)}},
+            style:(row, i)=>({color:'gray'}),
+            class:(row, i)=>({hide:1}),          
             columns:[
-                {header:'Name', field:'name'},
-                {header:'Age', field:'age'},
+                {header:'Name', field:'name', cellRenderer:(row, i)=>
+                    i%2?
+                    <input type="text" on-input={this.nameClick.bind(null, row)} value={row.name}/>
+                    :row.name
+                },
+                {header:'Age', field:'age',on:{mouseenter:row=>console.log(row.age)}, style:(row, i)=>({color:'red'})},
                 {header:'Address', field:'address'},
+            ],
+            footers:[
+                [{text:'footer1'},{text:'footer1'},{text:'footer1'}]
+               
             ]
         }
+    }
+    nameClick(row, e){
+        row.name=e.target.value;
+        console.log(row.name, e);
     }
     //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
     getFormOptions(model, dispatch){
