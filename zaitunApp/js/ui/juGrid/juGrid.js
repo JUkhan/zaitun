@@ -12,7 +12,7 @@ class juGrid{
             return h('div','columns undefined');
         }
 
-        const vnodes=h('table.table',{classNames:'table-inverse'}, [
+        const vnodes=h('table.table'+(this.model.tableClass||''), [
             this._header(model),
             this._body(model),
             this._footer(model)
@@ -29,8 +29,8 @@ class juGrid{
         return model;
     }
     _header(model){
-        return h('thead',[
-                h('tr',model.columns.map((r, index)=>h('th',{key:index}, r.header)))
+        return h('thead'+(this.model.headerClass||''),[
+                h('tr',model.columns.filter(col=>!col.hide).map((r, index)=>h('th',{key:index}, r.header)))
             ])
     }
     _body(model){
@@ -42,13 +42,14 @@ class juGrid{
         return this._defaultView(model);
     }
     _defaultView(model){
+        const columns=model.columns.filter(col=>!col.hide);
         return h('tbody',
             model.data.map((row, ri)=>h('tr',{
                 key:ri,
                 on:this._bindEvents(row, ri, this.model),
                 style:this._bindStyle(row, ri, this.model),
                 class:this._bindClass(row, ri, this.model)},
-                model.columns.map((col, ci)=>h('td', {
+                columns.map((col, ci)=>h('td', {
                     key:ci,
                     on:this._bindEvents(row, ri, col),
                     style:this._bindStyle(row, ri, col),
@@ -71,7 +72,7 @@ class juGrid{
                     if(ename==='click' && (reciver.singleSelect||reciver.muitiSelect)){selectableFlag=false;}
                     events[ename]=(ev)=>{
                         if(ename==='click' && reciver.selectable){
-                            this._select_row(row, ev);    
+                            this._select_row(row, ri, ev);    
                         }
                         reciver.on[ename](row, ri, ev);
                     }                   
@@ -79,14 +80,14 @@ class juGrid{
             }            
             if(selectableFlag && (reciver.singleSelect||reciver.muitiSelect)){
                  events['click']=(ev)=>{
-                     this._select_row(row, ev);  
+                     this._select_row(row, ri, ev);  
                  }
             }
             return events;
         }
         if((reciver.singleSelect||reciver.muitiSelect)){
             events['click']=(ev)=>{
-                this._select_row(row, ev);  
+                this._select_row(row, ri, ev);  
             }
             return events;
         }
@@ -94,12 +95,12 @@ class juGrid{
     }
     selectedRows=[];
     selectedRow={};
-    _select_row(row, ev){
+    _select_row(row, ri, ev){
          if(this.model.singleSelect){ 
             this.selectedRow.selected=false;
             row.selected=true;
             this.selectedRow=row;
-            this._selectedRowsCallback(this.selectedRow);           
+            this._selectedRowsCallback(this.selectedRow, ri, ev);           
              
          }else{
            const frow=this.selectedRows.find(r=>r===row);
@@ -121,13 +122,13 @@ class juGrid{
                       this.selectedRows=[row];
                   }
              }
-             this._selectedRowsCallback(this.selectedRows);
+             this._selectedRowsCallback(this.selectedRows, ri, ev);
         }
         this.refresh();     
     }
-    _selectedRowsCallback(rows){
+    _selectedRowsCallback(rows, ri, ev){
         if(typeof this.model.selectedRows === 'function'){
-            this.model.selectedRows(rows);
+            this.model.selectedRows(rows, ri, ev);
         }
     }
     _bindClass(row, ri, reciver){
@@ -147,9 +148,9 @@ class juGrid{
         if(!model.footers){
             return '';
         }
-        return h('tfoot',
+        return h('tfoot'+(this.model.footerClass||''),
             model.footers.map((row, ri)=>h('tr',{key:ri},
-                row.map((col, ci)=>h('th',{
+                row.filter(col=>!col.hide).map((col, ci)=>h('th',{
                     key:ci, 
                     props:{colSpan:col.colSpan||1},
                     on:this._bindEvents(col, ri, col),
@@ -168,9 +169,33 @@ class juGrid{
     //public methods
     setData(data){       
         this.dispatch({type:DATA_CHANGE, payload:data});
+        return this;
     }
     refresh(){
         this.dispatch({type:REFRESH});
+        return this;
+    }
+    hideColumns(colids, isHide){       
+        colids.forEach(cid=>{
+            const hcol=this.model.columns.find(c=>c.id===cid);
+            if(hcol){
+                hcol.hide=isHide;
+            }
+        });
+        return this;
+    }
+    hideFooterColumns(colids, isHide){
+        if(!this.model.footers)return this;
+        colids.forEach(cid=>{
+           for(const row of this.model.footers){
+               const col= row.find(c=>c.id===cid);
+               if(col){
+                    col.hide=isHide;
+                    break;
+               }
+           }            
+        });
+        return this;
     }
 }
 export {juGrid}

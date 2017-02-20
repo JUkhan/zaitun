@@ -28,22 +28,27 @@ export default class FormExample{
     }
     gridOptions(){
         return {
+            tableClass:'.table-sm.table-bordered', headerClass:'.thead-default',
+            footerClass:'.thead-default',
             singleSelect:true, xmuitiSelect:true,
-            selectedRows:rows=>console.log(rows),
+            selectedRows:(rows, ri, ev)=>console.log(rows, ri, ev),
             //on:{dblclick:(row, i, ev)=>{console.log(row, i, ev)}},
             style:(row, i)=>({color:'gray'}),
             class:(row, i)=>({hide:1}),          
             columns:[
                 {header:'Name', field:'name', cellRenderer:(row, i)=>
                     row.selected?
-                    <input type="text" on-input={this.nameClick.bind(null, row)} value={row.name}/>
+                    <input type="text" on-input={(ev)=>row.name=ev.target.value} value={row.name}/>
                     :row.name
                 },
-                {header:[<button>Age</button>], field:'age',on:{mouseenter:row=>console.log(row.age)}, style:(row, i)=>({color:'red'})},
-                {header:'Address', field:'address'},
+                {header:'Age', field:'age',on:{mouseenter:row=>console.log(row.age)}, style:(row, i)=>({color:'red'})},
+                {header:'Address', field:'address',id:3, cellRenderer:(row, i)=>
+                    row.selected?
+                    <input type="text" on-input={(ev)=>row.address=ev.target.value} value={row.address}/>
+                    :row.address},
             ],
             footers:[
-                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1'}],
+                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1', id:3}],
                 [{colSpan:3, cellRenderer:data=><b>Total rows: {data.length}</b>}]
             ]
         }
@@ -91,7 +96,9 @@ export default class FormExample{
                         ]},
                         Grid:{
                             inputs:[
-                                {type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
+                                [{type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
+                                {type:'button', on:{click:()=>{Grid.hideColumns([3], true).hideFooterColumns([3], true).refresh();}}, classNames:'.btn.btn-primary.btn-sm', label:'Hide Address'}
+                                ],
                                 {
                                     type:'component',
                                     actionType:'grid',
