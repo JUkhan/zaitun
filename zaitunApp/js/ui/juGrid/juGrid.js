@@ -71,7 +71,7 @@ class juGrid{
                     if(ename==='click' && (reciver.singleSelect||reciver.muitiSelect)){selectableFlag=false;}
                     events[ename]=(ev)=>{
                         if(ename==='click' && reciver.selectable){
-                            this._select(row, ev);    
+                            this._select_row(row, ev);    
                         }
                         reciver.on[ename](row, ri, ev);
                     }                   
@@ -79,14 +79,14 @@ class juGrid{
             }            
             if(selectableFlag && (reciver.singleSelect||reciver.muitiSelect)){
                  events['click']=(ev)=>{
-                     this._select(row, ev);  
+                     this._select_row(row, ev);  
                  }
             }
             return events;
         }
         if((reciver.singleSelect||reciver.muitiSelect)){
             events['click']=(ev)=>{
-                this._select(row, ev);  
+                this._select_row(row, ev);  
             }
             return events;
         }
@@ -94,7 +94,7 @@ class juGrid{
     }
     selectedRows=[];
     selectedRow={};
-    _select(row, ev){
+    _select_row(row, ev){
          if(this.model.singleSelect){ 
             this.selectedRow.selected=false;
             row.selected=true;
@@ -149,10 +149,22 @@ class juGrid{
         }
         return h('tfoot',
             model.footers.map((row, ri)=>h('tr',{key:ri},
-                row.map((col, ci)=>h('th',{key:ci}, col.text))
+                row.map((col, ci)=>h('th',{
+                    key:ci, 
+                    props:{colSpan:col.colSpan||1},
+                    on:this._bindEvents(col, ri, col),
+                    style:this._bindStyle(col, ri, col),
+                    class:this._bindClass(col, ri, col)
+                }, this._footerCellValue(col, ri)))
             ))
         );
     }
+     _footerCellValue(col, ri){       
+        if(typeof col.cellRenderer==='function'){
+            return  [col.cellRenderer(this.model.data||[], ri)];
+        }
+        return col.text;        
+    }  
     //public methods
     setData(data){       
         this.dispatch({type:DATA_CHANGE, payload:data});

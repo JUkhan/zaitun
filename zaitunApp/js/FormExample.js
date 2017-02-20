@@ -35,16 +35,16 @@ export default class FormExample{
             class:(row, i)=>({hide:1}),          
             columns:[
                 {header:'Name', field:'name', cellRenderer:(row, i)=>
-                    i%2?
+                    row.selected?
                     <input type="text" on-input={this.nameClick.bind(null, row)} value={row.name}/>
                     :row.name
                 },
-                {header:'Age', field:'age',on:{mouseenter:row=>console.log(row.age)}, style:(row, i)=>({color:'red'})},
+                {header:[<button>Age</button>], field:'age',on:{mouseenter:row=>console.log(row.age)}, style:(row, i)=>({color:'red'})},
                 {header:'Address', field:'address'},
             ],
             footers:[
-                [{text:'footer1'},{text:'footer1'},{text:'footer1'}]
-               
+                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1'}],
+                [{colSpan:3, cellRenderer:data=><b>Total rows: {data.length}</b>}]
             ]
         }
     }
