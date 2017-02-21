@@ -19,13 +19,7 @@ class juGrid{
         ]);
         return vnodes;
     }
-    update(model, action){
-        switch(action.type){
-           case DATA_CHANGE:
-         
-            return {...model, data:action.payload};
-           default: return model;  
-        }
+    update(model, action){        
         return model;
     }
     _header(model){
@@ -46,52 +40,120 @@ class juGrid{
         return h('tbody',
             model.data.map((row, ri)=>h('tr',{
                 key:ri,
-                on:this._bindEvents(row, ri, this.model),
+                on:this._rowBindEvents(row, ri, this.model),
                 style:this._bindStyle(row, ri, this.model),
                 class:this._bindClass(row, ri, this.model)},
                 columns.map((col, ci)=>h('td', {
                     key:ci,
                     on:this._bindEvents(row, ri, col),
                     style:this._bindStyle(row, ri, col),
-                    class:this._bindClass(row, ri, col)
+                    class:this._bindClass(row, ri, col),
+                    props:col.props
                 }, this._cellValue(row, col, ri)))
             ))
         );
+    }
+    _isUndef(p){
+        return p===undefined;
     }
     _cellValue(row, col, ri){       
         if(typeof col.cellRenderer==='function'){
             return  [col.cellRenderer(row, ri)];
         }
-        return row[col.field];        
-    }   
-    _bindEvents(row, ri, reciver){
-        let events={}, selectableFlag=true;        
-        if(typeof reciver.on==='object'){            
+        if(col.type){
+            if(this._isUndef(col.iopts)){col.iopts={};}
+            if(this._isUndef(col.props)){col.props={};}           
+            switch (col.type) {
+                
+            
+                default:               
+                   return row.selected?
+                   [h('input',{
+                       hook:{insert:vnode=>this._focus(col, vnode.elm)},
+                       on:this._bindInputEvents(row, ri, col, col.iopts),
+                       style:this._bindStyle(row, ri, col.iopts),
+                       class:this._bindClass(row, ri, col.iopts),
+                       props:{...col.props, type:col.type,value:row[col.field]}
+                    })
+                   ]
+                   :this._transformValue(row[col.field], row, col)
+            }
+        }
+        return this._transformValue(row[col.field], row, col, ri);        
+    }
+    _transformValue(val, row, col, ri){
+        return typeof col.tnsValue==='function'?col.tnsValue(val, row, ri):val
+    }
+    _recordUpdate(row, col, ri, ev){
+        row[col.field]=ev.target.value;
+        if(typeof this.model.recordChange==='function'){
+            this.model.recordChange(row, col, ri, ev);
+        }
+    } 
+    _focus(col, elm){
+        if(col.focus){
+            elm.focus();
+        }
+    }
+    _rowBindEvents(row, ri, reciver){
+        let events={}, has_click_evt=false;        
+        if(typeof reciver.on==='object'){ 
+            if(reciver.on['click'] && (reciver.singleSelect||reciver.multiSelect)){has_click_evt=true;}           
             for(let ename in reciver.on){
-                if(reciver.on.hasOwnProperty(ename)){ 
-                    if(ename==='click' && (reciver.singleSelect||reciver.muitiSelect)){selectableFlag=false;}
+                if(reciver.on.hasOwnProperty(ename)){
                     events[ename]=(ev)=>{
-                        if(ename==='click' && reciver.selectable){
+                        if(ename==='click' && has_click_evt){
                             this._select_row(row, ri, ev);    
                         }
                         reciver.on[ename](row, ri, ev);
                     }                   
                 }
-            }            
-            if(selectableFlag && (reciver.singleSelect||reciver.muitiSelect)){
-                 events['click']=(ev)=>{
-                     this._select_row(row, ri, ev);  
-                 }
             }
-            return events;
         }
-        if((reciver.singleSelect||reciver.muitiSelect)){
+        if(!has_click_evt && (reciver.singleSelect||reciver.multiSelect)){
             events['click']=(ev)=>{
                 this._select_row(row, ri, ev);  
-            }
+            };
             return events;
         }
-        return null;
+        return events;
+    } 
+     _bindEvents(row, ri, reciver){
+        if(typeof reciver.on==='object'){ 
+            let events={};                     
+            for(let ename in reciver.on){
+                if(reciver.on.hasOwnProperty(ename)){
+                    events[ename]=(ev)=>{                       
+                        reciver.on[ename](row, ri, ev);
+                    };                   
+                }
+            }
+            return events;
+        }        
+        return undefined;
+    }    
+    _bindInputEvents(row, ri, col, reciver){
+        let events={}, has_input_evt=false; 
+        if(typeof reciver.on==='object'){
+            if(reciver.on['input']){has_input_evt=true;}              
+            for(let ename in reciver.on){
+                if(reciver.on.hasOwnProperty(ename)){
+                    events[ename]=(ev)=>{
+                        if(ename==='input' && has_input_evt){
+                            this._recordUpdate(row, col, ri, ev);
+                        }
+                        reciver.on[ename](row, ri, ev);
+                    }                   
+                }
+            }
+           
+        }        
+        if(!has_input_evt){
+            events['input']=(ev)=>{
+                this._recordUpdate(row, col, ri, ev);
+            } 
+       }
+       return events;
     }
     selectedRows=[];
     selectedRow={};
@@ -133,16 +195,22 @@ class juGrid{
     }
     _bindClass(row, ri, reciver){
         if(typeof reciver.class === 'function'){
-            let classObj= reciver.class(row, ri);
-            if(reciver.singleSelect||reciver.muitiSelect){
+            const classObj= reciver.class(row, ri);
+            if(reciver.singleSelect||reciver.multiSelect){
+                classObj.selected=row.selected;
+            }
+            return classObj;
+        }else{
+            const classObj= {};
+            if(reciver.singleSelect||reciver.multiSelect){
                 classObj.selected=row.selected;
             }
             return classObj;
         }
-        return null;
+       
     }
     _bindStyle(row, ri, reciver){
-        return typeof reciver.style === 'function'?reciver.style(row, ri):null
+        return typeof reciver.style === 'function'?reciver.style(row, ri):undefined
     }
     _footer(model){
         if(!model.footers){
@@ -152,7 +220,7 @@ class juGrid{
             model.footers.map((row, ri)=>h('tr',{key:ri},
                 row.filter(col=>!col.hide).map((col, ci)=>h('th',{
                     key:ci, 
-                    props:{colSpan:col.colSpan||1},
+                    props:col.props,
                     on:this._bindEvents(col, ri, col),
                     style:this._bindStyle(col, ri, col),
                     class:this._bindClass(col, ri, col)
@@ -167,8 +235,26 @@ class juGrid{
         return col.text;        
     }  
     //public methods
-    setData(data){       
-        this.dispatch({type:DATA_CHANGE, payload:data});
+    select(rowIndex){ 
+        if(Array.isArray(this.model.data)){
+            if(this.model.data.length>rowIndex && (this.model.singleSelect||this.model.multiSelect)){
+                this.selectedRow.selected=false;
+                this.selectedRows.forEach(row=>{row.selected=false;});
+                this.model.data[rowIndex].selected=true;
+                if(this.model.singleSelect){this.selectedRow= this.model.data[rowIndex];}                
+                else{ this.selectedRows=[this.model.data[rowIndex]];}               
+            }
+        }
+        return this;
+    }
+    focus(rowIndex, colId){ 
+        if(colId){     
+            this.model.columns.forEach(col=>{col.focus=col.id===colId;});
+        }
+        return this.select(rowIndex);
+    }
+    setData(data){
+        this.model.data=data;
         return this;
     }
     refresh(){
