@@ -61,6 +61,9 @@ class juGrid{
             return  [col.cellRenderer(row, ri)];
         }
         if(col.type){
+            if(!this._isUndef(col.editPer) && !col.editPer(row, ri)){
+                 return this._transformValue(row[col.field], row, col, ri); 
+            }
             if(this._isUndef(col.iopts)){col.iopts={};}
             if(this._isUndef(col.props)){col.props={};}           
             switch (col.type) {

@@ -38,7 +38,7 @@ export default class FormExample{
             //class:(row, i)=>({hide:1}),          
             columns:[
                 {header:'Name', iopts:{}, focus:true, field:'name',type:'text'},
-                {header:'Age', field:'age', type:'number', tnsValue:val=>val+' - formated'},
+                {header:'Age', editPer:row=>!false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
                 {header:'Birth Date', field:'address',id:3, type:'date'},
             ],
             footers:[
