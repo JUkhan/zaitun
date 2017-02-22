@@ -37,13 +37,14 @@ export default class FormExample{
             //style:(row, i)=>({color:'gray'}),
             //class:(row, i)=>({hide:1}),          
             columns:[
-                {header:'Name', iopts:{}, focus:true, field:'name',type:'text'},
+                {header:'Name', iopts:{props:{name:'xp'}}, focus:true, field:'name',type:'text'},
                 {header:'Age', editPer:row=>!false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
-                {header:'Birth Date', field:'address',id:3, type:'date'},
+                {header:'Birth Date', field:'address', type:'date'},
+                {id:4, iopts:{on:{change:(r,i,e)=>console.log('->',r,i,e)}}, header:'Country', field:'country', type:'select'},
             ],
             footers:[
-                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1', id:3}],
-                [{props:{colSpan:3}, cellRenderer:data=><b>Total rows: {data.length}</b>}]
+                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1', id:3},{text:'footer1', id:4}],
+                [{props:{colSpan:4}, cellRenderer:data=><b>Total rows: {data.length}</b>}]
             ]
         }
     }
@@ -108,12 +109,23 @@ export default class FormExample{
     loadData(dispatch){
        
         let data=[];
-        for(let i=0;i<5;i++){
-            data.push({name:'Abdulla'+i, age:32, address:'2017-02-15'});
+        for(let i=0;i<10;i++){
+            data.push({name:'Abdulla'+i, age:32, 
+            address:'2017-02-15',
+            country:Math.floor(Math.random() * 3) + 1 });
         }
-        
-        Grid.setData(data).select(0).refresh();
-    //dispatch({type:'setData'});
+        const countries=[
+            {text:'Bangladesh', value:1},
+            {text:'Pakistan', value:2},
+            {text:'Ujbikistan', value:3}
+        ];
+
+        Grid
+        .setData(data)
+        .setSelectData(4, countries)
+        .select(0)
+        .refresh();
+    
     }
     view({model, dispatch}){    
         this.model=model;

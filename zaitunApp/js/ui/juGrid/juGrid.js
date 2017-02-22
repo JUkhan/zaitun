@@ -67,8 +67,20 @@ class juGrid{
             if(this._isUndef(col.iopts)){col.iopts={};}
             if(this._isUndef(col.props)){col.props={};}           
             switch (col.type) {
-                
-            
+                case 'select':
+                    const data=col[col.field+'_data']||[];
+                    return row.selected?
+                    [h('select',{
+                       hook:{insert:vnode=>this._focus(col, vnode.elm)},
+                       on:this._bindInputEvents(row, ri, col, col.iopts),
+                       style:this._bindStyle(row, ri, col.iopts),
+                       class:this._bindClass(row, ri, col.iopts),
+                       props:{...col.iopts.props, value:row[col.field]}
+                    },
+                    data.map(d=>h('option',{props:{value:d.value}}, d.text))
+                    )
+                    ]
+                    :this._transformValue(row[col.field], row, col)
                 default:               
                    return row.selected?
                    [h('input',{
@@ -76,7 +88,7 @@ class juGrid{
                        on:this._bindInputEvents(row, ri, col, col.iopts),
                        style:this._bindStyle(row, ri, col.iopts),
                        class:this._bindClass(row, ri, col.iopts),
-                       props:{...col.props, type:col.type,value:row[col.field]}
+                       props:{...col.iopts.props, type:col.type,value:row[col.field]}
                     })
                    ]
                    :this._transformValue(row[col.field], row, col)
@@ -84,7 +96,25 @@ class juGrid{
         }
         return this._transformValue(row[col.field], row, col, ri);        
     }
+    _getSelectText(col, val){        
+        const data=col[col.field+'_data'];
+        if(this._isUndef(val)){
+            val='';
+        }
+        val=val.toString();
+        if(Array.isArray(data)){
+            const item=data.find(_=>_.value.toString()===val);
+            if(item){
+                return item.text;
+            }
+        }
+        return '';
+    }
     _transformValue(val, row, col, ri){
+        if(col.type==='select'){
+            return typeof col.tnsValue==='function'?col.tnsValue(val, row, ri)
+            :this._getSelectText(col, val)
+        }
         return typeof col.tnsValue==='function'?col.tnsValue(val, row, ri):val
     }
     _recordUpdate(row, col, ri, ev){
@@ -284,6 +314,13 @@ class juGrid{
                }
            }            
         });
+        return this;
+    }
+    setSelectData(colID, data){
+        const col=this.model.columns.find(_=>_.id===colID);
+        if(col){
+            col[col.field+'_data']=data;
+        }
         return this;
     }
 }
