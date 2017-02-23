@@ -48,7 +48,7 @@ class juGrid{
                     on:this._bindEvents(row, ri, col),
                     style:this._bindStyle(row, ri, col),
                     class:this._bindClass(row, ri, col),
-                    props:col.props
+                    props:this._bindProps(row, ri, col)
                 }, this._cellValue(row, col, ri)))
             ))
         );
@@ -72,23 +72,34 @@ class juGrid{
                     return row.selected?
                     [h('select',{
                        hook:{insert:vnode=>this._focus(col, vnode.elm)},
-                       on:this._bindInputEvents(row, ri, col, col.iopts),
+                       on:this._bindInputEvents(row, ri, col, col.iopts, 'change'),
                        style:this._bindStyle(row, ri, col.iopts),
                        class:this._bindClass(row, ri, col.iopts),
-                       props:{...col.iopts.props, value:row[col.field]}
+                       props:{...this._bindProps(row, ri, col.iopts), value:row[col.field]}
                     },
                     data.map(d=>h('option',{props:{value:d.value}}, d.text))
                     )
                     ]
                     :this._transformValue(row[col.field], row, col)
+                case 'checkbox':
+                return row.selected?
+                   [h('input',{
+                       hook:{insert:vnode=>this._focus(col, vnode.elm)},
+                       on:this._bindInputEvents(row, ri, col, col.iopts, 'change'),
+                       style:this._bindStyle(row, ri, col.iopts),
+                       class:this._bindClass(row, ri, col.iopts),
+                       props:{...this._bindProps(row, ri, col.iopts), type:col.type, checked:row[col.field]}
+                    })
+                   ]
+                   :this._transformValue(row[col.field], row, col)
                 default:               
                    return row.selected?
                    [h('input',{
                        hook:{insert:vnode=>this._focus(col, vnode.elm)},
-                       on:this._bindInputEvents(row, ri, col, col.iopts),
+                       on:this._bindInputEvents(row, ri, col, col.iopts,'input'),
                        style:this._bindStyle(row, ri, col.iopts),
                        class:this._bindClass(row, ri, col.iopts),
-                       props:{...col.iopts.props, type:col.type,value:row[col.field]}
+                       props:{...this._bindProps(row, ri, col.iopts), type:col.type, value:row[col.field]}
                     })
                    ]
                    :this._transformValue(row[col.field], row, col)
@@ -117,8 +128,13 @@ class juGrid{
         }
         return typeof col.tnsValue==='function'?col.tnsValue(val, row, ri):val
     }
-    _recordUpdate(row, col, ri, ev){
-        row[col.field]=ev.target.value;
+    _recordUpdate(row, col, ri, ev){        
+        if(col.type==='checkbox'){
+            row[col.field]=ev.target.checked;
+            console.log(ev.target.checked);
+        }else{
+            row[col.field]=ev.target.value;
+        }
         if(typeof this.model.recordChange==='function'){
             this.model.recordChange(row, col, ri, ev);
         }
@@ -165,14 +181,14 @@ class juGrid{
         }        
         return undefined;
     }    
-    _bindInputEvents(row, ri, col, reciver){
+    _bindInputEvents(row, ri, col, reciver, recChngeEvName){
         let events={}, has_input_evt=false; 
         if(typeof reciver.on==='object'){
-            if(reciver.on['input']){has_input_evt=true;}              
+            if(reciver.on[recChngeEvName]){has_input_evt=true;}              
             for(let ename in reciver.on){
                 if(reciver.on.hasOwnProperty(ename)){
                     events[ename]=(ev)=>{
-                        if(ename==='input' && has_input_evt){
+                        if(ename===recChngeEvName && has_input_evt){
                             this._recordUpdate(row, col, ri, ev);
                         }
                         reciver.on[ename](row, ri, ev);
@@ -182,7 +198,7 @@ class juGrid{
            
         }        
         if(!has_input_evt){
-            events['input']=(ev)=>{
+            events[recChngeEvName]=(ev)=>{
                 this._recordUpdate(row, col, ri, ev);
             } 
        }
@@ -244,6 +260,9 @@ class juGrid{
     }
     _bindStyle(row, ri, reciver){
         return typeof reciver.style === 'function'?reciver.style(row, ri):undefined
+    }
+    _bindProps(row, ri, reciver){
+        return typeof reciver.props === 'function'?reciver.props(row, ri):{}
     }
     _footer(model){
         if(!model.footers){

@@ -37,14 +37,15 @@ export default class FormExample{
             //style:(row, i)=>({color:'gray'}),
             //class:(row, i)=>({hide:1}),          
             columns:[
-                {header:'Name', iopts:{props:{name:'xp'}}, focus:true, field:'name',type:'text'},
+                {header:'Name', focus:true, field:'name',type:'text'},
                 {header:'Age', editPer:row=>!false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
                 {header:'Birth Date', field:'address', type:'date'},
-                {id:4, iopts:{on:{change:(r,i,e)=>console.log('->',r,i,e)}}, header:'Country', field:'country', type:'select'},
+                {id:4, header:'Country', field:'country', type:'select'},
+                {header:'Single?', field:'single', type:'checkbox', tnsValue:val=>val?'Yes':'No'},
             ],
             footers:[
-                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1'},{text:'footer1', id:3},{text:'footer1', id:4}],
-                [{props:{colSpan:4}, cellRenderer:data=><b>Total rows: {data.length}</b>}]
+                [{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
+                [{props:{colSpan:5}, cellRenderer:data=><b>Total rows: {data.length}</b>}]
             ]
         }
     }
@@ -92,7 +93,7 @@ export default class FormExample{
                         Grid:{
                             inputs:[
                                 [{type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
-                                {type:'button', on:{click:()=>{Grid.hideColumns([3], true).hideFooterColumns([3], true).refresh();}}, classNames:'.btn.btn-primary.btn-sm', label:'Hide Address'}
+                                {type:'button', on:{click:()=>{Grid.hideColumns([4], true).refresh();}}, classNames:'.btn.btn-primary.btn-sm', label:'Hide Country'}
                                 ],
                                 {
                                     type:'component',
@@ -111,7 +112,7 @@ export default class FormExample{
         let data=[];
         for(let i=0;i<10;i++){
             data.push({name:'Abdulla'+i, age:32, 
-            address:'2017-02-15',
+            address:'2017-02-15', single:i%2?true:false,
             country:Math.floor(Math.random() * 3) + 1 });
         }
         const countries=[
