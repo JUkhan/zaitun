@@ -14,8 +14,7 @@ const CounterList=new clsCounterList();
 const TodosCom=new Todos();
 const Grid=new juGrid();
 
-export default class FormExample{
-    
+export default class FormExample{    
     init(dispatch){       
        const model={};
        model.data={name:'Abdulla',ox:{age:32}, gender:2};
@@ -30,22 +29,31 @@ export default class FormExample{
         return {'form-control':1,'form-control-sm':1 };
     }
     gridOptions(){
+        const emptyObj={name:'', age:16, address:'', single:false, country:''}
         return {
-            tableClass:'.table-sm.table-bordered', headerClass:'.thead-default',
+            tableClass:'.table-sm.table-bordered',
+            headerClass:'.thead-default',
             footerClass:'.thead-default', 
+            pager:{pageSize:5},
             hideHeader:!true,
             hideFooter:!true,
             hidePager:!true,
+            //des:true, //disallowed empty selection --default false
             pagerPos:'both', //top|bottom|both --default both
-            singleSelect:true, xmultiSelect:true,
-            selectedRows:(rows, ri, ev)=>console.log(rows, ri, ev),
-            recordChange:(row, col, ri, ev)=>console.log(row, col, ri, ev),
-            on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
+            pageChange:data=>Grid.selectRow(0).refresh(),
+            singleSelect:true,
+            //multiSelect:true,
+            selectedRows:(rows, ri, ev)=>{
+                this.selectedRow=rows;
+                Grid.refresh();
+            },
+            recordChange:(row, col, ri, ev)=>{Grid.refresh();},
+            //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
             //style:(row, i)=>({color:'gray'}),
             //class:(row, i)=>({hide:1}),          
             columns:[
                 {header:'Name', iopts:{class:r=>this.formClass()}, focus:true, field:'name',type:'text'},
-                {header:'Age', iopts:{class:r=>this.formClass()}, editPer:row=>!false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
+                {header:'Age', iopts:{class:r=>this.formClass()}, editPer:row=>false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
                 {header:'Birth Date', iopts:{class:r=>this.formClass()}, field:'address', type:'date'},
                 {id:4, header:'Country',iopts:{class:r=>this.formClass()}, field:'country', type:'select'},
                 {header:'Single?', field :'single', type:'checkbox', tnsValue:val=>val?'Yes':'No'},
@@ -53,7 +61,13 @@ export default class FormExample{
             footers:[
                 //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
             [
-                {props:{colSpan:4}, cellRenderer:data=><b>Total Rows: {data.length}</b>},
+                {cellRenderer:data=><b>Total Rows: {data.length}</b>},
+                {props:{colSpan:3}, cellRenderer:data=>
+                    <div>
+                        <button disabled={!this.selectedRow} on-click={()=>Grid.addRow({...emptyObj})}>Add</button>&nbsp;
+                        <button disabled={!this.selectedRow} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow)}>Remove</button>
+                    </div>
+                },
                 {cellRenderer:data=><b>{data.reduce((a,b)=>a+(b.single?1:0),0)}</b>}
             ]
             ] 
@@ -344,10 +358,9 @@ export default class FormExample{
 
         Grid
         .setData(data)
-        .setSelectData(4, countries)
-        .select(0)
+        .setSelectData(4, countries)       
         .refresh();
-    
+       
     }
     view({model, dispatch}){    
         this.model=model;

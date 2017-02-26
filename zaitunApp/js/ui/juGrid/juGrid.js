@@ -49,8 +49,9 @@ class juGrid{
     }
     _pageChange(data){
        this.data=data;
-       console.log(data);
-        //this.refresh();
+       if(typeof this.model.pageChange === 'function'){
+           this.model.pageChange(data);
+       }
     }
     _getPager(pagerModel, dispatch, pos){
         if(this.model.hidePager){
@@ -75,7 +76,15 @@ class juGrid{
                 h('td.table-info',{props:{colSpan:model.columns.length}},'Data not found')
             ])]);
         }
+        this._refreshSelectedRows(model);
         return this._defaultView(model);
+    }
+    _refreshSelectedRows(model){
+        if(model.multiSelect){
+            this.selectedRow={};
+            this.selectedRows=this.data.filter(_=>_.selected);
+           _selectedRowsCallback(this.selectedRows);
+        }
     }
     _defaultView(model){
         const columns=model.columns.filter(col=>!col.hide);
@@ -103,7 +112,7 @@ class juGrid{
             return  [col.cellRenderer(row, ri)];
         }
         if(col.type){
-            if(!this._isUndef(col.editPer) && !col.editPer(row, ri)){
+            if(typeof col.editPer==='function' && !col.editPer(row, ri)){
                  return this._transformValue(row[col.field], row, col, ri); 
             }
             if(this._isUndef(col.iopts)){col.iopts={};}
@@ -172,8 +181,7 @@ class juGrid{
     }
     _recordUpdate(row, col, ri, ev){        
         if(col.type==='checkbox'){
-            row[col.field]=ev.target.checked;
-            console.log(ev.target.checked);
+            row[col.field]=ev.target.checked;            
         }else{
             row[col.field]=ev.target.value;
         }
@@ -258,7 +266,16 @@ class juGrid{
          }else{
            const frow=this.selectedRows.find(r=>r===row);
              if(frow){
-                if(ev.ctrlKey && this.selectedRows.length>1){
+                if(!this.model.des){
+                   if(ev.ctrlKey){
+                        frow.selected=false;
+                        this.selectedRows=this.selectedRows.filter(r=>r!==row);                   
+                    }else{                    
+                        this.selectedRows.forEach(r=>{r.selected=false});                        
+                        this.selectedRows=[];
+                    }
+                } 
+                else if(ev.ctrlKey && this.selectedRows.length>1){
                     frow.selected=false;
                     this.selectedRows=this.selectedRows.filter(r=>r!==row);                   
                 }else{                    
@@ -332,14 +349,15 @@ class juGrid{
         return col.text;        
     }  
     //public methods
-    select(rowIndex){ 
+    selectRow(rowIndex){ 
         if(Array.isArray(this.data)){
             if(this.data.length>rowIndex && (this.model.singleSelect||this.model.multiSelect)){
                 this.selectedRow.selected=false;
                 this.selectedRows.forEach(row=>{row.selected=false;});
                this.data[rowIndex].selected=true;
                 if(this.model.singleSelect){this.selectedRow=this.data[rowIndex];}                
-                else{ this.selectedRows=[this.data[rowIndex]];}               
+                else{ this.selectedRows=[this.data[rowIndex]];}  
+                this._selectedRowsCallback(this.data[rowIndex]);             
             }
         }
         return this;
@@ -389,6 +407,29 @@ class juGrid{
         if(col){
             col[col.field+'_data']=data;
         }
+        return this;
+    }
+    removeRow(row){         
+        var index=this.data.indexOf(this.selectedRow);
+        this.data=this.data.filter(_=>_!==row);
+        if(typeof this.model.pager.sspFn!=='function'){
+            Pager.data=Pager.data.filter(_=>_!==row);
+        }
+        if(index>=this.data.length){
+            index--;
+        }
+        this.selectRow(index);
+        return this;
+    }
+    addRow(row){
+        var index=0;        
+        index=this.data.indexOf(this.selectedRow);
+        this.data.splice(index, -1, row);
+        if(typeof this.model.pager.sspFn!=='function'){
+            index=Pager.data.indexOf(this.selectedRow);
+            Pager.data.splice(index, -1, row);
+        }
+        this.selectRow(index);
         return this;
     }
 }

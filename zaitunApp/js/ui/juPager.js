@@ -19,8 +19,8 @@ class juPage{
     view({model, dispatch}){
         this.dispatch=dispatch;
         this.model=model;
-        this.pageSize=model.pageSize;
-        this.linkPages=model.linkPages;
+        this.pageSize=model.pageSize||10;
+        this.linkPages=model.linkPages||10;
        
         this._calculatePagelinkes();
         if(!this.linkList.length){return '';}
@@ -74,8 +74,8 @@ class juPage{
             this.sspFn({ pageSize: this.pageSize, pageNo: this.activePage, searchText: this.searchText, sort: this._sort, filter: this._filter })
                 .then(res =>
                 {
-                    this.totalRecords = res.totalRecords;
-                    this.totalPage = this.getTotalPage();
+                    this.totalRecords = res.totalRecords;                    
+                    this._setTotalPage();
                     this.pageChange(res.data);
                     this._calculatePager();
                     this.refresh();
@@ -96,6 +96,9 @@ class juPage{
         this.firePageChange();
     }
      //end public methods
+    _isUndef(p){
+        return p===undefined;
+    }
     _changePageSize(size)
     {
         this.pageSize = +size;
