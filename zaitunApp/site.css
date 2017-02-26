@@ -3,7 +3,13 @@ body {
   padding-top: 4.5rem;
 }
 
-.selected{
-  background-color: #345;
-  color: white;
+.juGrid{
+  background-color: transparent;
+}
+.juGrid .selected{
+  background-color: ghostwhite; 
+}
+
+.juGrid .juPager select{
+  margin: 0 5px;
 }

@@ -1,7 +1,14 @@
 import {h} from 'zaitun';
+import {juPage} from '../juPager';
 const DATA_CHANGE=Symbol('SET_DATA');
+const PAGER_ACTION=Symbol('pager_action');
 const REFRESH=Symbol('REFRESH');
-class juGrid{     
+const Pager=new juPage();
+
+class juGrid{  
+    constructor(){
+        this.data=[];
+    }   
     init(){
         return {};
     }
@@ -11,24 +18,59 @@ class juGrid{
         if(!model.columns){
             return h('div','columns undefined');
         }
-
-        const vnodes=h('table.table'+(this.model.tableClass||''), [
+        if(this._isUndef(model.pager)){
+            model.pager=Pager.init();
+        }
+        Pager.pageChange=this._pageChange.bind(this);
+        if(this._isUndef(model.pagerPos)){
+            model.pagerPos='both';
+        }
+        const table=h('table.table'+(this.model.tableClass||''), [
             this._header(model),
             this._body(model),
             this._footer(model)
         ]);
-        return vnodes;
+        return h('div.juGrid',[
+            this._getPager(model.pager, dispatch, 'top'),
+            table,
+            this._getPager(model.pager, dispatch, 'bottom'),
+            ]);
     }
-    update(model, action){        
-        return model;
+    update(model, action){ 
+        switch (action.type) {
+            case PAGER_ACTION:
+                model.pager=Pager.update(model.pager, action.payload);
+                return model;
+        
+            default:
+               return model;
+        }       
+        
+    }
+    _pageChange(data){
+       this.data=data;
+       console.log(data);
+        //this.refresh();
+    }
+    _getPager(pagerModel, dispatch, pos){
+        if(this.model.hidePager){
+            return '';
+        }       
+        if((pos==='top' && (this.model.pagerPos==='both' ||this.model.pagerPos==='top')) || (pos==='bottom' && (this.model.pagerPos==='both' ||this.model.pagerPos==='bottom'))){
+                return h('div.juPager',[Pager.view({model:pagerModel, dispatch:action=>dispatch({type:PAGER_ACTION,payload:action})})])
+        }
+        return '';
     }
     _header(model){
+        if(model.hideHeader){
+            return '';
+        }
         return h('thead'+(this.model.headerClass||''),[
                 h('tr',model.columns.filter(col=>!col.hide).map((r, index)=>h('th',{key:index}, r.header)))
             ])
     }
     _body(model){
-        if(!model.data){
+        if(!this.data.length){
             return h('tbody',[h('tr',[
                 h('td.table-info',{props:{colSpan:model.columns.length}},'Data not found')
             ])]);
@@ -38,11 +80,11 @@ class juGrid{
     _defaultView(model){
         const columns=model.columns.filter(col=>!col.hide);
         return h('tbody',
-            model.data.map((row, ri)=>h('tr',{
+            this.data.map((row, ri)=>h('tr',{
                 key:ri,
-                on:this._rowBindEvents(row, ri, this.model),
-                style:this._bindStyle(row, ri, this.model),
-                class:this._bindClass(row, ri, this.model)},
+                on:this._rowBindEvents(row, ri, model),
+                style:this._bindStyle(row, ri, model),
+                class:this._bindClass(row, ri, model)},
                 columns.map((col, ci)=>h('td', {
                     key:ci,
                     on:this._bindEvents(row, ri, col),
@@ -265,7 +307,7 @@ class juGrid{
         return typeof reciver.props === 'function'?reciver.props(row, ri):{}
     }
     _footer(model){
-        if(!model.footers){
+        if(!model.footers||model.hideFooter){
             return '';
         }
         return h('tfoot'+(this.model.footerClass||''),
@@ -282,19 +324,22 @@ class juGrid{
     }
      _footerCellValue(col, ri){       
         if(typeof col.cellRenderer==='function'){
-            return  [col.cellRenderer(this.model.data||[], ri)];
+            if(!this.model.hidePager && !Pager.sspFn){
+                return  [col.cellRenderer(Pager.data||[], this.data||[], ri)];
+            }
+            return  [col.cellRenderer(this.data||[], ri)];
         }
         return col.text;        
     }  
     //public methods
     select(rowIndex){ 
-        if(Array.isArray(this.model.data)){
-            if(this.model.data.length>rowIndex && (this.model.singleSelect||this.model.multiSelect)){
+        if(Array.isArray(this.data)){
+            if(this.data.length>rowIndex && (this.model.singleSelect||this.model.multiSelect)){
                 this.selectedRow.selected=false;
                 this.selectedRows.forEach(row=>{row.selected=false;});
-                this.model.data[rowIndex].selected=true;
-                if(this.model.singleSelect){this.selectedRow= this.model.data[rowIndex];}                
-                else{ this.selectedRows=[this.model.data[rowIndex]];}               
+               this.data[rowIndex].selected=true;
+                if(this.model.singleSelect){this.selectedRow=this.data[rowIndex];}                
+                else{ this.selectedRows=[this.data[rowIndex]];}               
             }
         }
         return this;
@@ -306,7 +351,11 @@ class juGrid{
         return this.select(rowIndex);
     }
     setData(data){
-        this.model.data=data;
+        if(this.model.hidePager){
+            this.data=data;
+        }else{
+            Pager.setData(data);
+        }
         return this;
     }
     refresh(){

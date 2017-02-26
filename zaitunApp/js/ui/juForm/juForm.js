@@ -219,7 +219,7 @@ class juForm{
     }    
     createButtonElm(item, index=0){        
         return h(`button${item.classNames||''}${item.elmSize?'.btn-'+item.elmSize:''}`,
-         {key:index, on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, disabled:!!item.disabled}},
+         {key:index, on:this.getListener(item), style:item.style, class:item.class, props:{...this._bindProps(item), type:item.type, disabled:!!item.disabled}},
          item.label
          );
     }
@@ -237,9 +237,9 @@ class juForm{
         const elms=[];
         if(item.labelPos==='left'){
             elms.push(h('text', item.label));
-            elms.push(h('input.form-check-input',{on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, disabled:item.disabled, name:item.name||'oo7',value:item.value}}));
+            elms.push(h('input.form-check-input',{on:this.getListener(item), style:item.style, class:item.class, props:{...this._bindProps(item), type:item.type, disabled:item.disabled, name:item.name||'oo7',value:item.value}}));
         }else{
-             elms.push(h('input.form-check-input',{on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, disabled:item.disabled, name:item.name||'oo7',value:item.value}}));
+             elms.push(h('input.form-check-input',{on:this.getListener(item), style:item.style, class:item.class, props:{...this._bindProps(item), type:item.type, disabled:item.disabled, name:item.name||'oo7',value:item.value}}));
              elms.push(h('text', item.label));
         }
         return h(`div.form-check`,{class:{'form-check-inline':inline, disabled:item.disabled}},[h('label.form-check-label', elms)]);
@@ -279,6 +279,9 @@ class juForm{
         else { this.model.data[item.field] = val; }
         
     }
+    _bindProps(item){
+        return typeof item.props === 'object'?item.props:{}
+    }
     createElement(item, index){   
         if(item.hide)return [];    
         const children=[];
@@ -294,7 +297,7 @@ class juForm{
             children.push(this.createSelect(item, state));
         }else{
             children.push(h(`input.form-control${state[1]}${item.elmSize?'.form-control-'+item.elmSize:''}`,
-            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled}}));
+            {on:this.getListener(item), style:item.style, class:item.class, props:{...this._bindProps(item), type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled}}));
         }
         if(state[2]){ 
              children.push(h(`div.form-control-feedback`, state[2]));
@@ -312,8 +315,8 @@ class juForm{
    createSelect(item, state){
        if(!item.data)item.data=[];
        return h(`select.form-control${state[1]}${item.elmSize?'.form-control-'+item.elmSize:''}`,
-            {on:this.getListener(item), style:item.style, class:item.class, props:{type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled, multiple:!!item.multiple}},
-                item.data.map((it, index)=>h('option',{props:{value:it.value, key:index }}, it.text))
+            {on:this.getListener(item), style:item.style, class:item.class, props:{...this._bindProps(item), type:item.type, value:this.getValueFromData(item), disabled:!!item.disabled, multiple:!!item.multiple}},
+                item.data.map((it, index)=>h('option',{props:{...this._bindProps(item), value:it.value, key:index }}, it.text))
             );
         
    }
