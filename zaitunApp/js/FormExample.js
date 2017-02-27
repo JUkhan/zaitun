@@ -65,7 +65,7 @@ export default class FormExample{
                 {props:{colSpan:3}, cellRenderer:data=>
                     <div>
                         <button disabled={!this.selectedRow} on-click={()=>Grid.addRow({...emptyObj})}>Add</button>&nbsp;
-                        <button disabled={!this.selectedRow} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow)}>Remove</button>
+                        <button disabled={!this.selectedRow} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow).pager.clickPage(Grid.pager.activePage)}>Remove</button>
                     </div>
                 },
                 {cellRenderer:data=><b>{data.reduce((a,b)=>a+(b.single?1:0),0)}</b>}

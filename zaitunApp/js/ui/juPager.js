@@ -61,6 +61,7 @@ class juPage{
     }
     //public methods
     refresh(){
+        this._calculatePager();
         this.dispatch({type:'pager'});
     }
     setData(data){
@@ -77,7 +78,7 @@ class juPage{
                     this.totalRecords = res.totalRecords;                    
                     this._setTotalPage();
                     this.pageChange(res.data);
-                    this._calculatePager();
+                    //this._calculatePager();
                     this.refresh();
                 });
         } else
@@ -85,7 +86,7 @@ class juPage{
             if (!this.data) return;
             let startIndex = (this.activePage - 1) * this.pageSize;
             this.pageChange(this.data.slice(startIndex, startIndex + this.pageSize));
-            this._calculatePager();
+            //this._calculatePager();
             this.refresh();
         }
          

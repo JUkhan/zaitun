@@ -7,7 +7,8 @@ body {
   background-color: transparent;
 }
 .juGrid .selected{
-  background-color: ghostwhite; 
+  background-color: #345; 
+  color: white;
 }
 
 .juGrid .juPager select{

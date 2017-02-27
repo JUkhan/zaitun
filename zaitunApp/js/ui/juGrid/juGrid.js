@@ -8,6 +8,7 @@ const Pager=new juPage();
 class juGrid{  
     constructor(){
         this.data=[];
+        this.pager=Pager;
     }   
     init(){
         return {};
@@ -354,10 +355,12 @@ class juGrid{
             if(this.data.length>rowIndex && (this.model.singleSelect||this.model.multiSelect)){
                 this.selectedRow.selected=false;
                 this.selectedRows.forEach(row=>{row.selected=false;});
-               this.data[rowIndex].selected=true;
-                if(this.model.singleSelect){this.selectedRow=this.data[rowIndex];}                
-                else{ this.selectedRows=[this.data[rowIndex]];}  
-                this._selectedRowsCallback(this.data[rowIndex]);             
+                if(rowIndex<this.data.length){
+                    this.data[rowIndex].selected=true;
+                    if(this.model.singleSelect){this.selectedRow=this.data[rowIndex];}                
+                    else{ this.selectedRows=[this.data[rowIndex]];}  
+                    this._selectedRowsCallback(this.data[rowIndex]);  
+                }           
             }
         }
         return this;
@@ -418,16 +421,16 @@ class juGrid{
         if(index>=this.data.length){
             index--;
         }
-        this.selectRow(index);
+        if(index>=0){
+            this.selectRow(index); 
+        }       
         return this;
     }
     addRow(row){
-        var index=0;        
-        index=this.data.indexOf(this.selectedRow);
+        var index=this.data.indexOf(this.selectedRow);
         this.data.splice(index, -1, row);
-        if(typeof this.model.pager.sspFn!=='function'){
-            index=Pager.data.indexOf(this.selectedRow);
-            Pager.data.splice(index, -1, row);
+        if(typeof this.model.pager.sspFn!=='function'){            
+            Pager.data.splice(Pager.data.indexOf(this.selectedRow), -1, row);
         }
         this.selectRow(index);
         return this;
