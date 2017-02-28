@@ -77,16 +77,14 @@ class juPage{
                 {
                     this.totalRecords = res.totalRecords;                    
                     this._setTotalPage();
-                    this.pageChange(res.data);
-                    //this._calculatePager();
+                    this.pageChange(res.data);                    
                     this.refresh();
                 });
         } else
         {
             if (!this.data) return;
             let startIndex = (this.activePage - 1) * this.pageSize;
-            this.pageChange(this.data.slice(startIndex, startIndex + this.pageSize));
-            //this._calculatePager();
+            this.pageChange(this.data.slice(startIndex, startIndex + this.pageSize));           
             this.refresh();
         }
          
