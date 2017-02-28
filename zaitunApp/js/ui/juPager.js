@@ -7,7 +7,7 @@ class juPage{
         this.linkList=[];
         this.totalRecords=0;
         this.sspFn=null;
-        this.data=null;
+        this.data=[];
         this.pageChange=null;
     }
     init(){

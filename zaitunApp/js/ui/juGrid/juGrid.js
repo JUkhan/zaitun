@@ -428,11 +428,11 @@ class juGrid{
     }
     addRow(row){
         var index=this.data.indexOf(this.selectedRow);
-        this.data.splice(index, -1, row);
+        this.data.splice(index+1, -1, row);
         if(typeof this.model.pager.sspFn!=='function'){            
-            Pager.data.splice(Pager.data.indexOf(this.selectedRow), -1, row);
+            Pager.data.splice(Pager.data.indexOf(this.selectedRow)+1, -1, row);
         }
-        this.selectRow(index);
+        this.selectRow(index+1);
         return this;
     }
 }

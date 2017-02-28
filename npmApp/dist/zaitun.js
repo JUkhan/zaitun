@@ -824,6 +824,9 @@ function ComponentManager() {
         this.key = route.cache ? url : '';
         this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
         this.updateUI();
+        if (typeof this.child.onViewInit === 'function') {
+            this.child.onViewInit(this.model, this.dispatch);
+        }
         if (this.devTool) {
             this.devTool.reset();
         }
@@ -840,13 +843,12 @@ function ComponentManager() {
 
     this.dispatch = function (action) {
         this.model = this.mcom.update(this.model, action);
+        this.updateUI();
         if (this.devTool) {
             this.devTool.setAction(action, this.model);
         }
-        this.updateUI();
     };
     this.fireDestroyEvent = function () {
-
         if (this.key) {
             this.setModelToCache(this.key, this.model.child);
         }
@@ -974,7 +976,7 @@ var Router = {
     listen: function listen() {
         var that = this;
         window.addEventListener("hashchange", function (ev) {
-            that.check(this.getFragment());
+            that.check(that.getFragment());
         }, false);
 
         Array.from(document.querySelectorAll('a')).forEach(function (it) {
