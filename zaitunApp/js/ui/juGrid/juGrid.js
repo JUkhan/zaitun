@@ -68,6 +68,7 @@ class juGrid{
             return '';
         }
         return h('thead'+(this.model.headerClass||''),[
+                ...this._Extraheaders(model),
                 h('tr',model.columns.filter(col=>!col.hide).map((r, index)=>h('th',{key:index}, r.header)))
             ])
     }
@@ -323,6 +324,21 @@ class juGrid{
     }
     _bindProps(row, ri, reciver){
         return typeof reciver.props === 'function'?reciver.props(row, ri):{}
+    }
+    _Extraheaders(model){
+        if(!model.headers){
+            return [];
+        }
+        return model.headers.map((row, ri)=>h('tr',{key:ri},
+                row.filter(col=>!col.hide).map((col, ci)=>h('th',{
+                    key:ci, 
+                    props:col.props,
+                    on:this._bindEvents(col, ri, col),
+                    style:this._bindStyle(col, ri, col),
+                    class:this._bindClass(col, ri, col)
+                }, this._footerCellValue(col, ri)))
+            ));
+       
     }
     _footer(model){
         if(!model.footers||model.hideFooter){

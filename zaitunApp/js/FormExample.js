@@ -48,12 +48,11 @@ export default class FormExample{
             hidePager:!true,
             //des:true, //disallowed empty selection --default false
             pagerPos:'both', //top|bottom|both --default both
-            pageChange:data=>Grid.selectRow(0).refresh(),
+            pageChange:data=>Grid.selectRow(0),
             singleSelect:true,
             //multiSelect:true,
             selectedRows:(rows, ri, ev)=>{
                 this.selectedRow=rows;
-                Grid.refresh();
             },
             recordChange:(row, col, ri, ev)=>{Grid.refresh();},
             //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
@@ -66,13 +65,18 @@ export default class FormExample{
                 {id:4, header:'Country',iopts:{class:r=>this.formClass()}, field:'country', type:'select'},
                 {header:'Single?', field :'single', type:'checkbox', tnsValue:val=>val?'Yes':'No'},
             ],
+            xheaders:[
+                [{text:'Name', props:{colSpan:3}},
+                 {text:'Country', props:{colSpan:2}}   
+                ]
+            ],
             footers:[
                 //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
             [
                 {cellRenderer:data=><b>Total Rows: {data.length}</b>},
                 {props:{colSpan:3}, cellRenderer:data=>
                     <div>
-                        <button on-click={()=>Grid.addRow({...emptyObj})}>Add</button>&nbsp;
+                        <button on-click={()=>Grid.addRow({...emptyObj}).refresh()}>Add</button>&nbsp;
                         <button disabled={!this.selectedRow} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow).pager.clickPage(Grid.pager.activePage)}>Remove</button>
                     </div>
                 },
