@@ -76,8 +76,8 @@ export default class FormExample{
                 {cellRenderer:data=><b>Total Rows: {data.length}</b>},
                 {props:{colSpan:3}, cellRenderer:data=>
                     <div>
-                        <button on-click={()=>Grid.addRow({...emptyObj}).refresh()}>Add</button>&nbsp;
-                        <button disabled={!this.selectedRow} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow).pager.clickPage(Grid.pager.activePage)}>Remove</button>
+                        <button on-click={()=>Grid.addRow({...emptyObj}).refresh()}>Add <i classNames="fa fa-plus"></i></button>&nbsp;
+                        <button disabled={Grid.data.length===0} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow).pager.clickPage(Grid.pager.activePage)}>Remove <i classNames="fa fa-trash"></i></button>
                     </div>
                 },
                 {cellRenderer:data=><b>{data.reduce((a,b)=>a+(b.single?1:0),0)}</b>}
@@ -158,7 +158,7 @@ export default class FormExample{
         this.model=model;
         return <div>
         <div>
-         <button on-click={this.optionChanged.bind(this)}>Hide Name</button>
+         <button on-click={this.optionChanged.bind(this)}>Hide Name <i classNames="fa fa-home"></i></button>
          
         </div>
             <TestForm model={model} dispatch={dispatch} />
