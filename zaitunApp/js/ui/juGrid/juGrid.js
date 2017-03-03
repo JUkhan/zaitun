@@ -9,6 +9,7 @@ class juGrid{
     constructor(){
         this.data=[];
         this.pager=Pager;
+        this._sort_action=false;
     }   
     init(){
         return {};
@@ -48,8 +49,12 @@ class juGrid{
         }       
         
     }
-    _pageChange(data){
+    _pageChange(data, isDiffPage){
        this.data=data;
+       if(!this._sort_action){
+            this.selectedRows=[];
+            this._sort_action=false;
+       }
        if(typeof this.model.pageChange === 'function'){
            this.model.pageChange(data);
        }
@@ -64,7 +69,7 @@ class juGrid{
         return '';
     }
      _sort(col){
-       if(!col.sort)return;
+       if(!col.sort)return;       
         col.reverse = !(col.reverse === undefined ? true : col.reverse);
         this.model.columns.forEach(_ =>
         {
@@ -79,6 +84,7 @@ class juGrid{
         if(!Pager.sspFn){
             Pager.data.sort(sortFn);
         }
+        this._sort_action=true;
         Pager.sort(col.field,col.reverse);
       
     }
@@ -105,7 +111,7 @@ class juGrid{
         this._refreshSelectedRows(model);
         return this._defaultView(model);
     }
-    _refreshSelectedRows(model){
+    _refreshSelectedRows(model){        
         if(model.multiSelect){
             this.selectedRow={};
             const sdata=this.data.filter(_=>_.selected);

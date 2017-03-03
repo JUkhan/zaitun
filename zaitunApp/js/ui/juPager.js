@@ -96,6 +96,7 @@ class juPage{
     }
     clickPage(index)
     {  
+        console.log(index);
         this.activePage = index;         
         this.firePageChange();
     }

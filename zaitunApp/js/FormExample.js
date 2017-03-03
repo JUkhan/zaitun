@@ -48,11 +48,11 @@ export default class FormExample{
             hidePager:!true,            
             //aes:true, //disallowed empty selection --default false
             pagerPos:'both', //top|bottom|both --default both
-            pageChange:data=>Grid.selectRow(0),
+            //pageChange:data=>Grid.selectRow(0),
             singleSelect:true,
             //multiSelect:true,
             selectedRows:(rows, ri, ev)=>{
-                this.selectedRow=rows;console.log(rows)
+                this.selectedRow=rows;console.log('sr',rows)
             },
             recordChange:(row, col, ri, ev)=>{Grid.refresh();},
             //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
@@ -74,12 +74,13 @@ export default class FormExample{
                 //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
             [
                 {cellRenderer:data=><b>Total Rows: {data.length}</b>},
-                {props:{colSpan:3}, cellRenderer:data=>
+                {cellRenderer:data=>
                     <div>
                         <button on-click={()=>Grid.addRow({...emptyObj}).refresh()}>Add <i classNames="fa fa-plus"></i></button>&nbsp;
                         <button disabled={Grid.data.length===0} on-click={()=>confirm('Remove sure?')&&Grid.removeRow(this.selectedRow).pager.clickPage(Grid.pager.activePage)}>Remove <i classNames="fa fa-trash"></i></button>
                     </div>
                 },
+                {props:{colSpan:2}, cellRenderer:d=><b>Total Selected Rows: {d.filter(_=>_.selected).length}</b>},
                 {cellRenderer:data=><b>{data.reduce((a,b)=>a+(b.single?1:0),0)}</b>}
             ]
             ] 
@@ -152,7 +153,7 @@ export default class FormExample{
             address:'2017-02-15', single:i%2?true:false,
             country:Math.floor(Math.random() * 3) + 1 });
         }
-        Grid.setData(data);
+        Grid.setData(data).selectRow(0).refresh();
     }
     view({model, dispatch}){    
         this.model=model;
