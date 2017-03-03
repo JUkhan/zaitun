@@ -45,23 +45,23 @@ export default class FormExample{
             pager:{pageSize:5},
             hideHeader:!true,
             hideFooter:!true,
-            hidePager:!true,
-            //des:true, //disallowed empty selection --default false
+            hidePager:!true,            
+            //aes:true, //disallowed empty selection --default false
             pagerPos:'both', //top|bottom|both --default both
             pageChange:data=>Grid.selectRow(0),
             singleSelect:true,
             //multiSelect:true,
             selectedRows:(rows, ri, ev)=>{
-                this.selectedRow=rows;
+                this.selectedRow=rows;console.log(rows)
             },
             recordChange:(row, col, ri, ev)=>{Grid.refresh();},
             //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
             //style:(row, i)=>({color:'gray'}),
             //class:(row, i)=>({hide:1}),          
             columns:[
-                {header:'Name', iopts:{class:r=>this.formClass()}, focus:true, field:'name',type:'text'},
-                {header:'Age', iopts:{class:r=>this.formClass()}, editPer:row=>false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
-                {header:'Birth Date', iopts:{class:r=>this.formClass()}, field:'address', type:'date'},
+                {header:'Name',sort:true, iopts:{class:r=>this.formClass()}, focus:true, field:'name',type:'text'},
+                {header:'Age', sort:true, iopts:{class:r=>this.formClass()}, editPer:row=>false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
+                {header:'Birth Date',sort:true, iopts:{class:r=>this.formClass()}, field:'address', type:'date'},
                 {id:4, header:'Country',iopts:{class:r=>this.formClass()}, field:'country', type:'select'},
                 {header:'Single?', field :'single', type:'checkbox', tnsValue:val=>val?'Yes':'No'},
             ],

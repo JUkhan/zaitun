@@ -13,7 +13,7 @@ class juGrid{
     init(){
         return {};
     }
-    view({model, dispatch}){
+    view({model, dispatch}){console.log('grid-view');
         this.dispatch=dispatch;
         this.model=model; 
         if(!model.columns){
@@ -63,15 +63,39 @@ class juGrid{
         }
         return '';
     }
+     _sort(col){
+       if(!col.sort)return;
+        col.reverse = !(col.reverse === undefined ? true : col.reverse);
+        this.model.columns.forEach(_ =>
+        {
+            if (_ !== col)
+            {
+                _.reverse = undefined;
+            }
+        });        
+        const reverse = !col.reverse ? 1 : -1, sortFn = typeof col.comparator === 'function' ?
+            (a, b) => reverse * col.comparator(a, b) :
+            function (a, b) { return a = a[col.field], b = b[col.field], reverse * ((a > b) - (b > a)); };
+        if(!Pager.sspFn){
+            Pager.data.sort(sortFn);
+        }
+        Pager.sort(col.field,col.reverse);
+      
+    }
+    _sortIcon(colDef)
+    {
+        const hidden = colDef.reverse === undefined;
+        return { 'fa-sort': hidden, 'not-active': hidden, 'fa-caret-up': colDef.reverse === false, 'fa-caret-down': colDef.reverse === true }; 
+    }
     _header(model){
         if(model.hideHeader){
             return '';
         }
         return h('thead'+(this.model.headerClass||''),[
                 ...this._Extraheaders(model),
-                h('tr',model.columns.filter(col=>!col.hide).map((r, index)=>h('th',{key:index}, r.header)))
+                h('tr',model.columns.filter(col=>!col.hide).map((col, index)=>h('th',{key:index, on:{click:()=>this._sort(col)}}, [col.sort?h('i.fa',{class:this._sortIcon(col)}):'',col.header])))
             ])
-    }
+    }    
     _body(model){
         if(!this.data.length){
             return h('tbody',[h('tr',[
@@ -84,8 +108,17 @@ class juGrid{
     _refreshSelectedRows(model){
         if(model.multiSelect){
             this.selectedRow={};
-            this.selectedRows=this.data.filter(_=>_.selected);
-           _selectedRowsCallback(this.selectedRows);
+            const sdata=this.data.filter(_=>_.selected);
+            for(var i=0;i<sdata.length; i++){
+                if(sdata[0]!==this.selectedRows[0]){
+                    break;
+                }
+            }
+            if(i!==sdata.length){
+                this.selectedRows=sdata;
+                this._selectedRowsCallback(this.selectedRows);
+            }
+            
         }
     }
     _defaultView(model){
@@ -258,17 +291,25 @@ class juGrid{
     }
     selectedRows=[];
     selectedRow={};
-    _select_row(row, ri, ev){
-         if(this.model.singleSelect){ 
-            this.selectedRow.selected=false;
-            row.selected=true;
+    _select_row(row, ri, ev){        
+        if(this.model.singleSelect && !this.model.aes && row===this.selectedRow){
+            return;
+        }
+        var is_not_refresh= false, xlen=-1; 
+        if(this.model.singleSelect){ 
+            if(row!==this.selectedRow){
+                this.selectedRow.selected=false;
+            }
+            row.selected=this.model.aes?!row.selected:true;           
             this.selectedRow=row;
-            this._selectedRowsCallback(this.selectedRow, ri, ev);           
-             
+            if(row.selected){
+                this._selectedRowsCallback(this.selectedRow, ri, ev); 
+            } 
          }else{
-           const frow=this.selectedRows.find(r=>r===row);
+           const frow=this.selectedRows.find(r=>r===row); 
+                  
              if(frow){
-                if(!this.model.des){
+                if(this.model.aes){
                    if(ev.ctrlKey){
                         frow.selected=false;
                         this.selectedRows=this.selectedRows.filter(r=>r!==row);                   
@@ -283,7 +324,9 @@ class juGrid{
                 }else{                    
                      this.selectedRows.forEach(r=>{r.selected=false});
                      row.selected=true;
+                     xlen= this.selectedRows.length;
                      this.selectedRows=[row];
+                     is_not_refresh=true;
                 }
              }else{
                   row.selected=true;
@@ -294,11 +337,16 @@ class juGrid{
                       this.selectedRows=[row];
                   }
              }
-             this._selectedRowsCallback(this.selectedRows, ri, ev);
-        }
-        this.refresh();     
+             if(xlen!==1){
+                this._selectedRowsCallback(this.selectedRows, ri, ev);
+             }
+            
+        }        
+        if(xlen!==1){
+            this.refresh();
+        }     
     }
-    _selectedRowsCallback(rows, ri, ev){
+    _selectedRowsCallback(rows, ri, ev){ 
         if(typeof this.model.selectedRows === 'function'){
             this.model.selectedRows(rows, ri, ev);
         }

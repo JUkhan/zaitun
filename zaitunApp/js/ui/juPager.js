@@ -60,6 +60,11 @@ class juPage{
         return model;
     }
     //public methods
+    sort(sortProp, isAsc)
+    {
+        this._sort = sortProp + '|' + (isAsc ? 'desc' : 'asc');
+        this.firePageChange();
+    }
     refresh(){
         this._calculatePager();
         this.dispatch({type:'pager'});
