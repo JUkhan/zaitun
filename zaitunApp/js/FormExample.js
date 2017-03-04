@@ -42,12 +42,12 @@ export default class FormExample{
             tableClass:'.table-sm.table-bordered',
             headerClass:'.thead-default',
             footerClass:'.thead-default', 
-            pager:{pageSize:5},
+            pager:{pageSize:5, linkPages:10, enablePowerPage:0, nav:1, search:1, pagerInfo:1, elmSize:'xsm'},
             hideHeader:!true,
             hideFooter:!true,
             hidePager:!true,            
             //aes:true, //disallowed empty selection --default false
-            pagerPos:'both', //top|bottom|both --default both
+            pagerPos:'top', //top|bottom|both --default both
             //pageChange:data=>Grid.selectRow(0),
             singleSelect:true,
             //multiSelect:true,
@@ -148,7 +148,7 @@ export default class FormExample{
     loadData(dispatch){
        
         let data=[];
-        for(let i=0;i<500;i++){
+        for(let i=0;i<7;i++){
             data.push({name:'Abdulla'+i, age:32, 
             address:'2017-02-15', single:i%2?true:false,
             country:Math.floor(Math.random() * 3) + 1 });

@@ -21,3 +21,11 @@ body {
 .juGrid thead .fa{
     width:14px; 
 }
+.juPager select.form-control{
+  display:inline-block;
+  width: inherit; 
+}
+.juPager .search.form-control{
+  display:inline-block;
+  width: inherit; 
+}

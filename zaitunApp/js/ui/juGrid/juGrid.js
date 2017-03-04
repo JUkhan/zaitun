@@ -3,13 +3,12 @@ import {juPage} from '../juPager';
 const DATA_CHANGE=Symbol('SET_DATA');
 const PAGER_ACTION=Symbol('pager_action');
 const REFRESH=Symbol('REFRESH');
-const Pager=new juPage();
+//const Pager=new juPage();
 
 class juGrid{  
     constructor(){
         this.data=[];
-        this.pager=Pager;
-        this._sort_action=false;
+        this.pager=new juPage();
     }   
     init(){
         return {};
@@ -20,13 +19,7 @@ class juGrid{
         if(!model.columns){
             return h('div','columns undefined');
         }
-        if(this._isUndef(model.pager)){
-            model.pager=Pager.init();
-        }
-        Pager.pageChange=this._pageChange.bind(this);
-        if(this._isUndef(model.pagerPos)){
-            model.pagerPos='both';
-        }
+        this._initPaager(model);
         const table=h('table.table'+(this.model.tableClass||''), [
             this._header(model),
             this._body(model),
@@ -41,7 +34,7 @@ class juGrid{
     update(model, action){ 
         switch (action.type) {
             case PAGER_ACTION:
-                model.pager=Pager.update(model.pager, action.payload);
+                model.pager=this.pager.update(model.pager, action.payload);
                 return model;
         
             default:
@@ -49,11 +42,39 @@ class juGrid{
         }       
         
     }
-    _pageChange(data, isDiffPage){
+    _initPaager(model){
+        if(this._isUndef(model.pager)){
+            model.pager=this.pager.init();
+        }
+        this.pager.pageChange=this._pageChange.bind(this);
+        if(this._isUndef(model.pagerPos)){
+            model.pagerPos='both';
+        }
+         if(this._isUndef(model.pager.nav)){
+            model.pager.nav=true;
+         }
+        if(this._isUndef(model.pager.searchFn)){
+           model.pager.searchFn=(data, val)=>{
+                const res=[], columns=this.model.columns, len=columns.length;
+                data.forEach((item) =>
+                {
+                    for (var index = 0; index < len; index++)
+                    {
+                        const col = columns[index];
+                        if (col.field && item[col.field] && item[col.field].toString().toLowerCase().indexOf(val) !== -1)
+                        {
+                            res.push(item); break;
+                        }
+                    }
+                });
+                return res;
+           };
+        }
+    }
+    _pageChange(data){
        this.data=data;
-       if(!this._sort_action){
+       if(this.pager.diffPageAction){
             this.selectedRows=[];
-            this._sort_action=false;
        }
        if(typeof this.model.pageChange === 'function'){
            this.model.pageChange(data);
@@ -64,7 +85,7 @@ class juGrid{
             return '';
         }       
         if((pos==='top' && (this.model.pagerPos==='both' ||this.model.pagerPos==='top')) || (pos==='bottom' && (this.model.pagerPos==='both' ||this.model.pagerPos==='bottom'))){
-                return h('div.juPager',[Pager.view({model:pagerModel, dispatch:action=>dispatch({type:PAGER_ACTION,payload:action})})])
+                return h('div.juPager',[this.pager.view({model:pagerModel, dispatch:action=>dispatch({type:PAGER_ACTION,payload:action})})])
         }
         return '';
     }
@@ -81,11 +102,11 @@ class juGrid{
         const reverse = !col.reverse ? 1 : -1, sortFn = typeof col.comparator === 'function' ?
             (a, b) => reverse * col.comparator(a, b) :
             function (a, b) { return a = a[col.field], b = b[col.field], reverse * ((a > b) - (b > a)); };
-        if(!Pager.sspFn){
-            Pager.data.sort(sortFn);
+        if(!this.pager.sspFn){
+            this.pager.data.sort(sortFn);
         }
         this._sort_action=true;
-        Pager.sort(col.field,col.reverse);
+        this.pager.sort(col.field,col.reverse);
       
     }
     _sortIcon(colDef)
@@ -412,8 +433,8 @@ class juGrid{
     }
      _footerCellValue(col, ri){       
         if(typeof col.cellRenderer==='function'){
-            if(!this.model.hidePager && !Pager.sspFn){
-                return  [col.cellRenderer(Pager.data||[], this.data||[], ri)];
+            if(!this.model.hidePager && !this.pager.sspFn){
+                return  [col.cellRenderer(this.pager.data||[], this.data||[], ri)];
             }
             return  [col.cellRenderer(this.data||[], ri)];
         }
@@ -445,7 +466,7 @@ class juGrid{
         if(this.model.hidePager){
             this.data=data;
         }else{
-            Pager.setData(data);
+            this.pager.setData(data);
         }
         return this;
     }
@@ -483,10 +504,14 @@ class juGrid{
         return this;
     }
     removeRow(row){         
-        var index=this.data.indexOf(this.selectedRow);
-        this.data=this.data.filter(_=>_!==row);
-        if(typeof this.model.pager.sspFn!=='function'){
-            Pager.data=Pager.data.filter(_=>_!==row);
+        var index=this.data.indexOf(this.selectedRow);        
+        this.data.splice(index, 1)
+        if(typeof this.model.pager.sspFn!=='function'){  
+            const inx=this.pager.data.indexOf(this.selectedRow);          
+            this.pager.data.splice(inx, 1);
+            if(this.model.pager.search && this.pager.data.length!==this.pager._cachedData.length){               
+                this.pager._cachedData.splice(inx, 1);
+            }
         }
         if(index>=this.data.length){
             index--;
@@ -499,8 +524,12 @@ class juGrid{
     addRow(row){
         var index=this.data.indexOf(this.selectedRow);
         this.data.splice(index+1, -1, row);
-        if(typeof this.model.pager.sspFn!=='function'){            
-            Pager.data.splice(Pager.data.indexOf(this.selectedRow)+1, -1, row);
+        if(typeof this.model.pager.sspFn!=='function'){ 
+            const inx=this.pager.data.indexOf(this.selectedRow)+1;           
+            this.pager.data.splice(inx, -1, row);
+            if(this.model.pager.search && this.pager.data.length!==this.pager._cachedData.length){               
+                this.pager._cachedData.splice(inx, -1, row);
+            }
         }
         this.selectRow(index+1);
         return this;
