@@ -29,3 +29,10 @@ body {
   display:inline-block;
   width: inherit; 
 }
+.juGrid td .concat{
+  overflow: hidden;
+  -ms-text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+  width: inherit;
+}

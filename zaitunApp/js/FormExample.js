@@ -39,10 +39,10 @@ export default class FormExample{
     gridOptions(){
         const emptyObj={name:'', age:16, address:'', single:false, country:''}
         return {
-            tableClass:'.table-sm.table-bordered',
-            headerClass:'.thead-default',
+            tableClass:'.table-sm.table-bordered.xtable-responsive',            
+            headerClass:'.thead-inverse',
             footerClass:'.thead-default', 
-            pager:{pageSize:5, linkPages:10, enablePowerPage:0, nav:1, search:1, pagerInfo:1, elmSize:'xsm'},
+            pager:{pageSize:5, linkPages:10, enablePowerPage:0, nav:1, search:1, pagerInfo:1, elmSize:'sm'},
             hideHeader:!true,
             hideFooter:!true,
             hidePager:!true,            
@@ -59,11 +59,12 @@ export default class FormExample{
             //style:(row, i)=>({color:'gray'}),
             //class:(row, i)=>({hide:1}),          
             columns:[
-                {header:'Name',sort:true, iopts:{class:r=>this.formClass()}, focus:true, field:'name',type:'text'},
+                {header:'Name',hClass:'.max', sort:true, iopts:{class:r=>this.formClass()}, focus:true, field:'name',type:'text'},
                 {header:'Age', sort:true, iopts:{class:r=>this.formClass()}, editPer:row=>false, field:'age', type:'number', tnsValue:val=>val+' - formated'},
                 {header:'Birth Date',sort:true, iopts:{class:r=>this.formClass()}, field:'address', type:'date'},
                 {id:4, header:'Country',iopts:{class:r=>this.formClass()}, field:'country', type:'select'},
                 {header:'Single?', field :'single', type:'checkbox', tnsValue:val=>val?'Yes':'No'},
+                
             ],
             xheaders:[
                 [{text:'Name', props:{colSpan:3}},

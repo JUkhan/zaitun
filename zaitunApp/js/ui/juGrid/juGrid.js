@@ -120,7 +120,7 @@ class juGrid{
         }
         return h('thead'+(this.model.headerClass||''),[
                 ...this._Extraheaders(model),
-                h('tr',model.columns.filter(col=>!col.hide).map((col, index)=>h('th',{key:index, on:{click:()=>this._sort(col)}}, [col.sort?h('i.fa',{class:this._sortIcon(col)}):'',col.header])))
+                h('tr',model.columns.filter(col=>!col.hide).map((col, index)=>h('th'+(col.hClass||''),{key:index, on:{click:()=>this._sort(col)}}, [col.sort?h('i.fa',{class:this._sortIcon(col)}):'',col.header])))
             ])
     }    
     _body(model){
