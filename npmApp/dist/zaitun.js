@@ -754,17 +754,19 @@ require('snabbdom/modules/props'), // for setting properties on DOM elements
 require('snabbdom/modules/style'), // handles styling on elements with support for animations
 require('snabbdom/modules/eventlisteners')]);
 var h = require('snabbdom/h');
-
-function ComponentManager() {
-    this.mcom = {};
-    this.child = {
+function emptyCom() {
+    return {
         init: function init() {
             return {};
         },
         view: function view(obj) {
-            return h('div', 'loading...');
+            return h('div.com-load', 'loading...');
         }
     };
+}
+function ComponentManager() {
+    this.mcom = {};
+    this.child = emptyCom();
     this.model = {};
     this.params = null;
     this.devTool = null;
@@ -772,40 +774,29 @@ function ComponentManager() {
     this.cacheObj = {};
 
     this.initMainComponent = function (component) {
-
         if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
             this.mcom = component;
         } else if (typeof component === 'function') {
             this.mcom = new component();
         }
+        this.validateCom(this.mcom);
+    };
+    this.validateCom = function (com) {
 
-        if (typeof this.mcom.init !== 'function') {
-            throw new Error('Component must have a init function');
+        if (typeof com.init !== 'function') {
+            throw new Error('Component must have a init function.');
         }
-        if (typeof this.mcom.view !== 'function') {
-            throw new Error('Component must have a view function');
-        }
-        if (typeof this.mcom.update !== 'function') {
-            throw new Error('Component must have a update function');
+        if (typeof com.view !== 'function') {
+            throw new Error('Component must have a view function.');
         }
     };
     this.initChildComponent = function (component) {
-
         if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
             this.child = component;
         } else if (typeof component === 'function') {
             this.child = new component();
         }
-
-        if (typeof this.child.init !== 'function') {
-            throw new Error('Component must have a init function');
-        }
-        if (typeof this.child.view !== 'function') {
-            throw new Error('Component must have a view function');
-        }
-        if (typeof this.child.update !== 'function') {
-            throw new Error('Component must have a update function');
-        }
+        this.validateCom(this.child);
     };
     this.reset = function () {
         this.model = this.mcom.init(this.dispatch, this.params);
@@ -818,17 +809,31 @@ function ComponentManager() {
         this.model = model;
         this.updateUI();
     };
+    this.loadCom = function (route, params, url) {
+        var that = this;
+        route.loadComponent().then(function (com) {
+            route.component = com.default;
+            route.loadComponent = undefined;
+            that.runChild(route, params, url);
+        });
+    };
     this.runChild = function (route, params, url) {
-        this.params = params;
-        this.initChildComponent(route.component);
-        this.key = route.cache ? url : '';
-        this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
-        this.updateUI();
-        if (typeof this.child.onViewInit === 'function') {
-            this.child.onViewInit(this.model, this.dispatch);
-        }
-        if (this.devTool) {
-            this.devTool.reset();
+        if (typeof route.loadComponent === 'function') {
+            this.child = emptyCom();
+            this.updateUI();
+            this.loadCom(route, params, url);
+        } else {
+            this.params = params;
+            this.initChildComponent(route.component);
+            this.key = route.cache ? url : '';
+            this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
+            this.updateUI();
+            if (typeof this.child.onViewInit === 'function') {
+                this.child.onViewInit(this.model, this.dispatch);
+            }
+            if (this.devTool) {
+                this.devTool.reset();
+            }
         }
     };
     this.run = function (component) {
