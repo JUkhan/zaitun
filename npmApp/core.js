@@ -65,7 +65,7 @@ function ComponentManager(){
     this.validateCom=function(com){
          
         if(typeof com.init !=='function'){
-            throw new Error('Component must have a init function.');
+            com.init=function(){return {};};            
         }
         if(typeof com.view !=='function'){
             throw new Error('Component must have a view function.');
