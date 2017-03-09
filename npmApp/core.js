@@ -1,11 +1,9 @@
-
 const Router =require('./router');
 const snabbdom =require('snabbdom');
 
 var vnode=null;
 
-function bootstrap(options){   
-    DOMReady(function(){
+function bootstrap(options){ 
         if(!options.containerDom){
             throw new Error('mountNode must be a css selector or a dom object');
         }
@@ -18,19 +16,7 @@ function bootstrap(options){
                throw new Error('bootstrap options: mainComponent missing.');
         }
         Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
-        
-    });
 } 
-
-function DOMReady(f) {
-  if (/(?!.*?compatible|.*?webkit)^mozilla|opera/i.test(navigator.userAgent)){ 
-    document.addEventListener("DOMContentLoaded", f, false);
-  }  
-  else{
-    window.setTimeout(f,0);
-  }
-}
-
 const patch = snabbdom.init([
   require('snabbdom/modules/class'),          // makes it easy to toggle classes
   require('snabbdom/modules/props'),          // for setting properties on DOM elements
@@ -176,5 +162,4 @@ function ComponentManager(){
          this.cacheObj[key]=value;
     }
 }
-//export default bootstrap;
 module.exports=bootstrap;

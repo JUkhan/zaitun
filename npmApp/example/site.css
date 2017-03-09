@@ -2,3 +2,37 @@ body {
   min-height: 75rem;
   padding-top: 4.5rem;
 }
+
+.juGrid{
+  background-color: transparent;
+}
+.juGrid .selected{
+  background-color: #345; 
+  color: white;
+}
+
+.juGrid .juPager select{
+  margin: 0 5px;
+}
+
+.juGrid .not-active{
+    color:rgba(0,0,0,0.2);
+}
+.juGrid thead .fa{
+    width:14px; 
+}
+.juPager select.form-control{
+  display:inline-block;
+  width: inherit; 
+}
+.juPager .search.form-control{
+  display:inline-block;
+  width: inherit; 
+}
+.juGrid td .concat{
+  overflow: hidden;
+  -ms-text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+  width: inherit;
+}

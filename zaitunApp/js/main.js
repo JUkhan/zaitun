@@ -10,13 +10,15 @@ import mainCom  from './mainCom';
 
 const routes=[
     {path:"/counter", component:clsCounter},
+    //loadComponent working in webpack(https://github.com/JUkhan/zaitun-starter-kit)
+    //{path:'/counterList', loadComponent:()=>System.import('./clsCounterList')},
     {path:'/counterList', component:clsCounterList},
     {path:'/todos', component:Todos},
     {path:'/formExample', component:FormExample, cache:true}
   ];
 
 bootstrap({
-  containerDom:'#placeholder',
+  containerDom:'#app',
   mainComponent:mainCom,
   //locationStrategy:'hash',
   routes:routes,
