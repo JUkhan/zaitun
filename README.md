@@ -59,7 +59,7 @@ class Counter{
 }
 export default Counter;
 ```
-> Zaitun uses [snabbdom](https://github.com/snabbdom/snabbdom)  for producing Html chunk. So you can use markup function h(..) or [snabbdom-jsx](https://github.com/yelouafi/snabbdom-jsx) for view
+> Zaitun uses [snabbdom](https://github.com/snabbdom/snabbdom)  to render view. So you can use markup function h(..) or [jsx](https://github.com/yelouafi/snabbdom-jsx) for view
 
 The counter component is defined by the following properties
 - Model : {count:0}
