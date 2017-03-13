@@ -186,7 +186,7 @@ update(model, action){
 - the UPDATE_XCOORDINATE and UPDATE_YCOORDINATE are, as we just saw, wrappers around a counter action. The function forwards the wrapped action to the concerned child counter along with its specific state.
 
 ## ROUTING - learn to navigate among the views
----
+
 Zaitun provides a `Router` service. We can dynamiclly add/remove routes and navigate to the views.
 
 When we click on a navigation, `Router` resolved the component from the route list and become ready to host. We can find this component from `Router.CM.child`.
