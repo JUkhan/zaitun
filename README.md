@@ -16,9 +16,9 @@ npm run build
 ## The Basic Pattern
 The logic of every Zaitun component will break up into three cleanly separated parts:
 
-- init - the state of your component(to create a state from scratch)
-- view - a way to view your state as HTML
-- update - a way to update your state
+- `init` - the state of your component(to create a state from scratch)
+- `view` - a way to view your state as HTML
+- `update` - a way to update your state
 
 This pattern is so reliable that I always start with the following skeleton and fill in details for my particular case.
 ```javascript
@@ -68,7 +68,7 @@ The counter component is defined by the following properties
 
 The first thing to note is that the view/update are both pure functions, they have no dependency on any external environment besides their input. The counter component itself doesn’t hold any state or variable, it just describes how to construct a view from a given state, and how to update a given state with a given action. Thanks to its purity, the counter component can be easily plugged into any environment that is able to supply it with its dependencies : a state  and an action.
 
-Second note, the ‘[dispatch, action]’ expression on the click event listener for each button. We are translating the raw user event (mouse click) into a meaningful action to our program (Increment or Decrement). Using ES6 symbols is better than raw strings (avoids collisions in action names).
+Second note, the `[dispatch, action]` expression on the click event listener for each button. We are translating the raw user event (mouse click) into a meaningful action to our program (Increment or Decrement). Using ES6 symbols is better than raw strings (avoids collisions in action names).
 ## Run the Counter component -  'main.js'
 ```javascript
 import {bootstrap} from 'zaitun';
@@ -187,10 +187,10 @@ update(model, action){
 
 ## ROUTING - learn to navigate among the views
 ---
-Zaitun provides a Router object. We can dynamiclly add/remove routes and navigate to the views.
+Zaitun provides a `Router` service. We can dynamiclly add/remove routes and navigate to the views.
 
-When we click on a navigation, component manager resolved the component from the route list and become ready to host. We can find this component from Router.CM.child.
-So, we need a main/root component where nav component(Router.CM.child) should be hosted.
+When we click on a navigation, `Router` resolved the component from the route list and become ready to host. We can find this component from `Router.CM.child`.
+So, we need a main/root component where nav component(`Router.CM.child`) should be hosted.
 
 The MainCom is defined in its own module ‘mainCom.js’
 ```javascript
