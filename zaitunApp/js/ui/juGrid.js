@@ -1,9 +1,8 @@
 import {h} from 'zaitun';
-import {juPage} from '../juPager';
+import {juPage} from './juPager';
 const DATA_CHANGE=Symbol('SET_DATA');
 const PAGER_ACTION=Symbol('pager_action');
 const REFRESH=Symbol('REFRESH');
-//const Pager=new juPage();
 
 class juGrid{  
     constructor(){
@@ -16,8 +15,11 @@ class juGrid{
     view({model, dispatch}){console.log('grid-view');
         this.dispatch=dispatch;
         this.model=model; 
-        if(!model.columns){
+        if(this._isUndef(model.columns)){
             return h('div','columns undefined');
+        }
+        if(this._isUndef(model.aews)){
+            model.aews=true;
         }
         this._initPaager(model);
         const table=h('table.table'+(this.model.tableClass||''), [
@@ -169,6 +171,9 @@ class juGrid{
     _isUndef(p){
         return p===undefined;
     }
+    _check_apply_editable_when_selected(row){
+        return this.model.aews?row.selected:row.editable;
+    }
     _cellValue(row, col, ri){       
         if(typeof col.cellRenderer==='function'){
             return  [col.cellRenderer(row, ri)];
@@ -182,7 +187,7 @@ class juGrid{
             switch (col.type) {
                 case 'select':
                     const data=col[col.field+'_data']||[];
-                    return row.selected?
+                    return this._check_apply_editable_when_selected(row)?
                     [h('select',{
                        hook:{insert:vnode=>this._focus(col, vnode.elm)},
                        on:this._bindInputEvents(row, ri, col, col.iopts, 'change'),
@@ -195,7 +200,7 @@ class juGrid{
                     ]
                     :this._transformValue(row[col.field], row, col)
                 case 'checkbox':
-                return row.selected?
+                return this._check_apply_editable_when_selected(row)?
                    [h('input',{
                        hook:{insert:vnode=>this._focus(col, vnode.elm)},
                        on:this._bindInputEvents(row, ri, col, col.iopts, 'change'),
@@ -206,7 +211,7 @@ class juGrid{
                    ]
                    :this._transformValue(row[col.field], row, col)
                 default:               
-                   return row.selected?
+                   return this._check_apply_editable_when_selected(row)?
                    [h('input',{
                        hook:{insert:vnode=>this._focus(col, vnode.elm)},
                        on:this._bindInputEvents(row, ri, col, col.iopts,'input'),

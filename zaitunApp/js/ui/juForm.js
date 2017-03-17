@@ -1,5 +1,5 @@
 import {h} from 'zaitun';
-import {guid} from '../utils';
+import {guid} from './utils';
 
 const TAB_CLICK=Symbol('TAB_CLICK');
 const OPTIONS_CHANGED=Symbol('OPTIONS_CHANGED');

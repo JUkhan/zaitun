@@ -2,11 +2,11 @@
 
 import {h, html} from 'zaitun';
 
-import {juForm, TAB_CLICK} from './ui/juForm/juForm';
+import {juForm, TAB_CLICK} from './ui/juForm';
 import clsCounter from './clsCounter';
 import clsCounterList from './clsCounterList';
 import Todos from './todos/todos';
-import {juGrid} from './ui/juGrid/juGrid';
+import {juGrid} from './ui/juGrid';
 
 const TestForm=new juForm();
 const Counter=new clsCounter();
@@ -14,7 +14,10 @@ const CounterList=new clsCounterList();
 const TodosCom=new Todos();
 const Grid=new juGrid();
 
-export default class FormExample{    
+export default class FormExample{
+    constructor(){
+        this.selectedRow={};
+    }    
     init(dispatch){       
        const model={};
        model.data={name:'Abdulla',ox:{age:32}, gender:2};
@@ -52,8 +55,11 @@ export default class FormExample{
             singleSelect:true,
             //multiSelect:true,
             selectedRows:(rows, ri, ev)=>{
-                this.selectedRow=rows;console.log('sr',rows)
+                //this.selectedRow.editable=false;
+                //rows.editable=true;
+                this.selectedRow=rows;
             },
+            aews:true, //apply Editable When Selected default true 
             recordChange:(row, col, ri, ev)=>{Grid.refresh();},
             //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
             //style:(row, i)=>({color:'gray'}),
