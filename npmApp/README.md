@@ -5,7 +5,7 @@ A light weight javascript framework with time-travelling debugger
 
 ## Usage
 
-[zaitun-starter-kit](https://github.com/JUkhan/zaitun-starter-kit)
+[zaitun-starter-kit](https://github.com/JUkhan/zaitun-starter-kit) Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/2/edit?html,js,output)
 
 ```javascript
 /** @jsx html */
