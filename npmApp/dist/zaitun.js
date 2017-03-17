@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){var g;if(typeof window!=='undefined'){g=window}else if(typeof self!=='undefined'){g=self}g.zaitun=f()})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
 var SVGNS = 'http://www.w3.org/2000/svg';
@@ -715,216 +715,197 @@ module.exports = function(sel, data, children, text, elm) {
 };
 
 },{}],11:[function(require,module,exports){
-'use strict';
+const Router =require('./router');
+const snabbdom =require('snabbdom');
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var vnode=null;
 
-var Router = require('./router');
-var snabbdom = require('snabbdom');
-
-var vnode = null;
-
-function bootstrap(options) {
-    DOMReady(function () {
-        if (!options.containerDom) {
+function bootstrap(options){ 
+        if(!options.containerDom){
             throw new Error('mountNode must be a css selector or a dom object');
         }
-        if (typeof options.containerDom === 'string') {
-            vnode = document.querySelector(options.containerDom);
-        } else {
-            vnode = options.containerDom;
+        if(typeof options.containerDom ==='string'){
+            vnode=document.querySelector(options.containerDom);
+        }else{
+            vnode=options.containerDom;
         }
-        if (!(_typeof(options.mainComponent) === 'object' || typeof options.mainComponent === 'function')) {
-            throw new Error('bootstrap options: mainComponent missing.');
+        if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
+               throw new Error('bootstrap options: mainComponent missing.');
         }
-        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);
-    });
-}
-
-function DOMReady(f) {
-    if (/(?!.*?compatible|.*?webkit)^mozilla|opera/i.test(navigator.userAgent)) {
-        document.addEventListener("DOMContentLoaded", f, false);
-    } else {
-        window.setTimeout(f, 0);
-    }
-}
-
-var patch = snabbdom.init([require('snabbdom/modules/class'), // makes it easy to toggle classes
-require('snabbdom/modules/props'), // for setting properties on DOM elements
-require('snabbdom/modules/style'), // handles styling on elements with support for animations
-require('snabbdom/modules/eventlisteners')]);
-var h = require('snabbdom/h');
-function emptyCom() {
+        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
+} 
+const patch = snabbdom.init([
+  require('snabbdom/modules/class'),          // makes it easy to toggle classes
+  require('snabbdom/modules/props'),          // for setting properties on DOM elements
+  require('snabbdom/modules/style'),          // handles styling on elements with support for animations
+  require('snabbdom/modules/eventlisteners'), // attaches event listeners
+]);
+const h =require('snabbdom/h');
+function emptyCom(){
     return {
-        init: function init() {
-            return {};
-        },
-        view: function view(obj) {
-            return h('div.com-load', 'loading...');
-        }
+        init:function(){return {};}, 
+        view:function(obj){return h('div.com-load','loading...');}
     };
 }
-function ComponentManager() {
-    this.mcom = {};
-    this.child = emptyCom();
-    this.model = {};
-    this.params = null;
-    this.devTool = null;
-    this.key = '';
-    this.cacheObj = {};
-
-    this.initMainComponent = function (component) {
-        if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
-            this.mcom = component;
-        } else if (typeof component === 'function') {
-            this.mcom = new component();
+function ComponentManager(){    
+    this.mcom={};
+    this.child=emptyCom();
+    this.model={};
+    this.params=null;
+    this.devTool=null;
+    this.key='';
+    this.cacheObj={};
+   
+   this.initMainComponent=function(component){        
+        if(typeof component ==='object'){
+            this.mcom=component;
+        }  
+        else if(typeof component ==='function'){
+            this.mcom=new component();
         }
         this.validateCom(this.mcom);
-    };
-    this.validateCom = function (com) {
-
-        if (typeof com.init !== 'function') {
-            throw new Error('Component must have a init function.');
+    }
+    this.validateCom=function(com){
+         
+        if(typeof com.init !=='function'){
+            com.init=function(){return {};};            
         }
-        if (typeof com.view !== 'function') {
+        if(typeof com.view !=='function'){
             throw new Error('Component must have a view function.');
-        }
-    };
-    this.initChildComponent = function (component) {
-        if ((typeof component === 'undefined' ? 'undefined' : _typeof(component)) === 'object') {
-            this.child = component;
-        } else if (typeof component === 'function') {
-            this.child = new component();
-        }
-        this.validateCom(this.child);
-    };
-    this.reset = function () {
-        this.model = this.mcom.init(this.dispatch, this.params);
-        if (typeof this.child.init === 'function') {
-            this.model.child = this.child.init(this.dispatch, this.params);
-        }
+        }        
+    }
+    this.initChildComponent=function(component){
+            if(typeof component ==='object'){
+                this.child=component;
+            }  
+            else if(typeof component ==='function'){
+                this.child=new component();
+            }                    
+            this.validateCom(this.child);       
+    }
+    this.reset=function(){
+        this.model=this.mcom.init(this.dispatch, this.params);
+        if(typeof this.child.init ==='function'){
+             this.model.child=this.child.init(this.dispatch, this.params);
+        }       
         this.updateUI();
-    };
-    this.updateByModel = function (model) {
-        this.model = model;
+    }
+    this.updateByModel=function(model){
+        this.model=model;
         this.updateUI();
-    };
-    this.loadCom = function (route, params, url) {
-        var that = this;
-        route.loadComponent().then(function (com) {
-            route.component = com.default;
-            route.loadComponent = undefined;
-            that.runChild(route, params, url);
-        });
-    };
-    this.runChild = function (route, params, url) {
-        if (typeof route.loadComponent === 'function') {
-            this.child = emptyCom();
-            this.updateUI();
+    } 
+    this.loadCom=function(route, params, url){
+        var that=this;   
+        route.loadComponent().then(function(com){
+            route.component=com.default;
+            route.loadComponent=undefined;
+			that.runChild(route, params, url);
+		});
+    }   
+    this.runChild=function(route, params, url){           
+        if(typeof route.loadComponent ==='function'){
+            this.child=emptyCom();
+            this.updateUI();         
             this.loadCom(route, params, url);
-        } else {
-            this.params = params;
-            this.initChildComponent(route.component);
-            this.key = route.cache ? url : '';
-            this.model.child = this.key && this.cacheObj[this.key] ? this.getModelFromCache(this.key) : this.child.init(this.dispatch, params);
+        }else{
+            this.params=params;
+            this.initChildComponent(route.component);        
+            this.key=route.cache?url:'';
+            this.model.child=(this.key && this.cacheObj[this.key])?this.getModelFromCache(this.key):this.child.init(this.dispatch, params);        
             this.updateUI();
-            if (typeof this.child.onViewInit === 'function') {
+            if(typeof this.child.onViewInit==='function'){
                 this.child.onViewInit(this.model, this.dispatch);
-            }
-            if (this.devTool) {
+            } 
+            if(this.devTool){
                 this.devTool.reset();
             }
-        }
-    };
-    this.run = function (component) {
+        }        
+    }
+    this.run=function(component){        
         this.initMainComponent(component);
-        this.model = this.mcom.init(this.dispatch);
-        this.updateUI();
-    };
-    this.updateUI = function () {
-        var newVnode = this.mcom.view({ model: this.model, dispatch: this.dispatch.bind(this) });
+        this.model=this.mcom.init(this.dispatch);        
+        this.updateUI();            
+    }
+    this.updateUI=function() {
+        const newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
         vnode = patch(vnode, newVnode);
-    };
+    }
 
-    this.dispatch = function (action) {
-        this.model = this.mcom.update(this.model, action);
-        this.updateUI();
-        if (this.devTool) {
+    this.dispatch=function(action) {        
+        this.model = this.mcom.update(this.model, action); 
+        this.updateUI(); 
+        if(this.devTool){
             this.devTool.setAction(action, this.model);
         }
-    };
-    this.fireDestroyEvent = function () {
-        if (this.key) {
-            this.setModelToCache(this.key, this.model.child);
-        }
-        if (typeof this.child.onDestroy === 'function') {
-            this.child.onDestroy();
-        }
-    };
-    this.destroy = function (path) {
-        try {
-            if (this.child && typeof this.child.canDeactivate === 'function') {
-                var res = this.child.canDeactivate();
-                if ((typeof res === 'undefined' ? 'undefined' : _typeof(res)) === 'object' && res.then) {
-                    var that = this;
-                    res.then(function (val) {
-                        if (val) {
-                            window.location.href = path;
-                            that.fireDestroyEvent();
-                        }
-                    });
-                } else if (res) {
-                    window.location.href = path;
-                    this.fireDestroyEvent();
-                }
-            } else {
-                window.location.href = path;
-                this.fireDestroyEvent();
+    }
+    this.fireDestroyEvent=function(){
+            if(this.key){
+                this.setModelToCache(this.key, this.model.child);
             }
-        } catch (ex) {
-            console.log(ex);
-        }
-    };
-    this.getModelFromCache = function (key) {
-        return this.cacheObj[key] || {};
-    };
-    this.setModelToCache = function (key, value) {
-        this.cacheObj[key] = value;
-    };
+            if(typeof this.child.onDestroy==='function'){
+                this.child.onDestroy();
+            }
+
+    }
+    this.destroy=function(path){
+        try{
+               if(this.child && typeof this.child.canDeactivate==='function'){
+                   const res=this.child.canDeactivate();
+                   if(typeof res === 'object' && res.then){
+                       var that=this;
+                       res.then(function(val){
+                            if(val){
+                                 window.location.href=path;
+                                 that.fireDestroyEvent();
+                            }
+                       });
+                   }
+                   else if(res){
+                        window.location.href=path;
+                        this.fireDestroyEvent();
+                   }
+               }else{
+                   window.location.href=path;
+                   this.fireDestroyEvent();
+               }
+              }catch(ex){
+                  console.log(ex);
+              }
+    }
+    this.getModelFromCache=function(key){
+        return  this.cacheObj[key]||{};
+    }
+    this.setModelToCache=function(key, value){
+         this.cacheObj[key]=value;
+    }
 }
-//export default bootstrap;
-module.exports = bootstrap;
-
+module.exports=bootstrap;
 },{"./router":13,"snabbdom":9,"snabbdom/h":2,"snabbdom/modules/class":5,"snabbdom/modules/eventlisteners":6,"snabbdom/modules/props":7,"snabbdom/modules/style":8}],12:[function(require,module,exports){
-'use strict';
 
-var h = require('snabbdom/h');
-var jsx = require('snabbdom-jsx');
-var bootstrap = require('./core');
-var Router = require('./router');
+const h =require('snabbdom/h');
+const jsx =require('snabbdom-jsx');
+const bootstrap =require('./core');
+const Router =require('./router');
 
-module.exports = { h: h, html: jsx.html, svg: jsx.svg, bootstrap: bootstrap, Router: Router };
-
+module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router}
 },{"./core":11,"./router":13,"snabbdom-jsx":1,"snabbdom/h":2}],13:[function(require,module,exports){
-'use strict';
-
 var Router = {
     routes: [],
     locationStrategy: 'hash',
     baseUrl: '/',
-    CM: null,
-    mainComponent: null,
-    config: function config(options) {
-        this.locationStrategy = options.locationStrategy == 'history' && !!history.pushState ? 'history' : 'hash';
+    CM:null,  
+    mainComponent:null,  
+    config: function(options) {
+        this.locationStrategy =  options.locationStrategy == 'history' && !!(history.pushState) ? 'history' : 'hash';
         this.baseUrl = options.baseUrl ? '/' + this.clearSlashes(options.baseUrl) + '/' : '/';
-        this.mainComponent = options.mainComponent;
-        this.routes = options.routes || [];
-        this.devTool = options.devTool;
+        this.mainComponent=options.mainComponent;
+        this.routes=options.routes||[];
+        this.devTool=options.devTool;
         return this;
     },
-    getFragment: function getFragment() {
+    getFragment: function() {
         var fragment = '';
-        if (this.locationStrategy === 'history') {
+        if(this.locationStrategy === 'history') {
             fragment = this.clearSlashes(decodeURI(location.pathname + location.search));
             fragment = fragment.replace(/\?(.*)$/, '');
             fragment = this.baseUrl != '/' ? fragment.replace(this.baseUrl, '') : fragment;
@@ -934,88 +915,85 @@ var Router = {
         }
         return this.clearSlashes(fragment);
     },
-    clearSlashes: function clearSlashes(path) {
+    clearSlashes: function(path) {
         return path.toString().replace(/\/$/, '').replace(/^\//, '');
     },
-    attach: function attach(cm) {
-        this.CM = new cm();
+    attach:function(cm){
+        this.CM=new cm();
         this.CM.run(this.mainComponent);
-        if (this.devTool) {
-            new this.devTool().setCM(this.CM);
-        }
+        if(this.devTool){           
+           new this.devTool().setCM(this.CM);
+        }   
         return this;
     },
-    add: function add(router) {
+    add: function(router) {        
         this.routes.push(router);
         return this;
     },
-    remove: function remove(pathName) {
-        this.routes = this.routes.filter(function (it) {
-            return it.path !== pathName;
-        });
+    remove: function(pathName) {
+        this.routes=this.routes.filter(function(it){return it.path!==pathName;});
         return this;
-    },
-    check: function check(hash) {
+    },   
+    check: function (hash) {
         var keys, match, routeParams;
-        for (var i = 0, max = this.routes.length; i < max; i++) {
-            if (this.clearSlashes(this.routes[i].path) === hash) {
+        for (var i = 0, max = this.routes.length; i < max; i++ ) {
+            if(this.clearSlashes(this.routes[i].path)===hash){
                 this.render(this.routes[i], null, hash);
                 return this;
             }
             keys = this.routes[i].path.match(/:([^\/]+)/g);
-            if (keys) {
-                routeParams = {};
+            if(keys){
+                routeParams = {}                
                 match = hash.match(new RegExp(this.clearSlashes(this.routes[i].path).replace(/:([^\/]+)/g, "([^\/]*)")));
                 if (match) {
                     match.shift();
                     match.forEach(function (value, i) {
                         routeParams[keys[i].replace(":", "")] = value;
                     });
-                    this.render(this.routes[i], routeParams, hash);
+                    this.render(this.routes[i], routeParams, hash);                  
                     return this;
                 }
             }
         }
         return this;
-    },
-    listen: function listen() {
-        var that = this;
-        window.addEventListener("hashchange", function (ev) {
-            that.check(that.getFragment());
+    },       
+    listen: function() {
+        var that=this;
+        window.addEventListener("hashchange", function(ev){             
+             that.check(that.getFragment());
         }, false);
 
-        Array.from(document.querySelectorAll('a')).forEach(function (it) {
-            it.addEventListener('click', function (ev) {
-                ev.preventDefault();
-                if (that.clearSlashes(ev.target.href) === that.clearSlashes(window.location.href)) {
-                    return;
-                }
-                that.CM.destroy(ev.target.href);
-            }, false);
-        });
+        Array.from(document.querySelectorAll('a')).forEach(function(it){
+            it.addEventListener('click',function(ev){
+               ev.preventDefault();
+               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;} 
+               that.CM.destroy(ev.target.href);
+            },false);
+        })
         return this;
     },
-    navigate: function navigate(path) {
+    navigate: function(path) {
         path = path ? path : '';
-        if (this.locationStrategy === 'history') {
+        if(this.locationStrategy === 'history') {
             history.pushState(null, null, this.baseUrl + this.clearSlashes(path));
         } else {
             window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + path;
         }
         return this;
-    },
-    setActivePath: function setActivePath(path) {
-        if (path) {
-            this.check(this.clearSlashes(this.getFragment() || path));
+    },    
+    setActivePath:function(path){  
+        if(path){    
+            this.check(this.clearSlashes(this.getFragment()||path));
         }
     },
-    render: function render(route, routeParams, url) {
-        window.activePath = route.path;
-        this.CM.runChild(route, routeParams, url);
+    render:function(route, routeParams, url){   
+        window.activePath=route.path;
+        this.CM.runChild(route, routeParams, url);               
     }
 };
 
-//export default Router;
-module.exports = Router;
 
-},{}]},{},[12]);
+//export default Router;
+module.exports=Router;
+},{}]},{},[12])(12)
+});
