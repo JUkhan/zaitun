@@ -150,29 +150,28 @@ class juForm{
     }
     createTabs(item){
         const elms=[], lies=[], tabcontents=[], tabNames=Object.keys(item.tabs);
-        let tabLink=item.activeTab;
+        item.tabLink=item.activeTab;
         tabNames.forEach(tabName=>{
-            let tabId='#'+tabName.replace(/\s+/,'_###_'); 
-            let disabled=!!item.tabs[tabName].disabled;
-            let hide=!!item.tabs[tabName].hide; 
+            let tabId='#'+tabName.replace(/\s+/,'_###_'), 
+                disabled=!!item.tabs[tabName].disabled,
+                hide=!!item.tabs[tabName].hide; 
             if(!hide){            
                 lies.push(h(`li.nav-item`,[
                     h(`a.nav-link`,{
                         props:{href:tabId},
                         class:{active:item.activeTab===tabName, disabled:disabled},                   
                         on:{click:e=>{
-                            e.preventDefault();
-                            if(disabled){return;}
-                            if(tabLink===tabName){return;}
-                            tabLink=tabName;                         
-                            this.selectTab(tabName, item);                            
+                                e.preventDefault();
+                                if(disabled){return;}
+                                if(item.tabLink===tabName){return;}                                               
+                                this.selectTab(tabName, item);
                             }
                         }
                     }, tabName)              
 
                 ]));
                 //tab contents 
-                if(tabName===tabLink){
+                if(tabName===item.tabLink){
                     tabcontents.push(h(`div.tab-item`, this.createElements(item.tabs[tabName])));
                 }
             }
@@ -326,9 +325,9 @@ class juForm{
                    const res=this._findTab(item, tabName);
                    if(res){return res;}
                }
-               else if(item.type==='tabs' && typeof item.tabs==='object'){
-                  const find=Object.keys(item.tabs).find(tn=>tn===tabName);
-                  if(find){return item;}
+               else if(item.type==='tabs' && typeof item.tabs==='object'){                  
+                  const find=item.tabs[tabName];
+                  if(find){return [find,item];}
                }
            }
           return null; 
@@ -358,41 +357,49 @@ class juForm{
         return null;
    }
    selectTab(tabName, item=null){
-       if(!item){item=this.findTab(tabName);}
+       if(!item){
+           item=this.findTab(tabName);
+           if(item){item=item[1];}
+        }
        if(item){
-            const res=typeof item.click==='function'?item.click(tabName):true;            
-            if(typeof res ==='boolean'){
+           const res=typeof item.tabClick==='function'?item.tabClick(tabName, item.activeTab):true;            
+           if(typeof res ==='boolean'){
                 if(res){ 
                     item.activeTab=tabName;
-                    this.dispatch({type:TAB_CLICK, payload:{tabName,formName:this.options.name||'oo7'}});
+                    item.tabLink=tabName;
+                    this.dispatch({type:TAB_CLICK, payload:{tabName,formName:this.options.name||'form007'}});
                 }
             }
             else if(typeof res ==='object' && res.then){
                 res.then(isTrue=>{
                     if(isTrue){
                         item.activeTab=tabName;
-                        this.dispatch({type:TAB_CLICK,form:this.options.name||'oo7', payload:{tabName,formName:this.options.name||'form007'}});
+                        item.tabLink=tabName;
+                        this.dispatch({type:TAB_CLICK, payload:{tabName,formName:this.options.name||'form007'}});
                     }
                 })
             }
        }
+       return this;
    }
-   optionsChanged(){
+   refresh(){
         this.dispatch({type:OPTIONS_CHANGED});
+        return this;
    }
    showModal(isOpen){ 
        $('#'+this.modalId).modal(isOpen?'show':'hide');
+       return this;
    }
    setSelectData(fieldName, data){
        const item=this.findField(fieldName);
        if(item){
-           item.data=data;
-           this.optionsChanged();
+           item.data=data;          
        }
+       return this
    }
    setFormData(data){
-       this.model.data=data;
-       this.optionsChanged();
+       this.model.data=data;      
+       return this;
    }
    getFormData(){
        return  this.model.data;

@@ -75,7 +75,11 @@ var Router = {
         Array.from(document.querySelectorAll('a')).forEach(function(it){
             it.addEventListener('click',function(ev){
                ev.preventDefault();
-               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;} 
+               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;}
+               if(ev.target.href.indexOf('#') && window.location.href.indexOf('#')===-1){
+                   window.location.href=ev.target.href;
+                   return; 
+                } 
                that.CM.destroy(ev.target.href);
             },false);
         })

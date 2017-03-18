@@ -3,8 +3,8 @@
 import {h, html} from 'zaitun';
 
 import {juForm, TAB_CLICK} from './ui/juForm';
-import clsCounter from './clsCounter';
-import clsCounterList from './clsCounterList';
+import clsCounter from './Counter';
+import clsCounterList from './CounterList';
 import Todos from './todos/todos';
 import {juGrid} from './ui/juGrid';
 
@@ -32,7 +32,7 @@ export default class FormExample{
         const countries=[
             {text:'Bangladesh', value:1},
             {text:'Pakistan', value:2},
-            {text:'Ujbikistan', value:3}
+            {text:'Uzbekistan', value:3}
         ];
         Grid.setSelectData(4, countries);
     }
@@ -59,7 +59,7 @@ export default class FormExample{
                 //rows.editable=true;
                 this.selectedRow=rows;
             },
-            aews:true, //apply Editable When Selected default true 
+            aews:true, //apply Editable When Selected - default true 
             recordChange:(row, col, ri, ev)=>{Grid.refresh();},
             //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
             //style:(row, i)=>({color:'gray'}),
@@ -108,47 +108,68 @@ export default class FormExample{
                      success:true, type:'text', size:3}],
                                             
                     {field:'gender', required:true, ignoreLabelSWD:1, warning:'warning', on:{input:val=>console.log(val)}, size:5, type:'select', label:'Gender', data:[{text:'Male', value:1},{text:'Female', value:2}]},
-                    {type:'tabs',  activeTab:'Grid', footer:<div>Footer</div>, tabs:{
-                        
-                        Counter:{ inputs:[
-                            {type:'vnode', vnode:<div style={({height:'20px'})}></div>},
-                                { size:3, 
-                                    type:'component', 
-                                    actionType:'Counter',
-                                    component:Counter,
-                                    field:'counter'
-                                }
-                        ]},
-                        'Counter List':{ inputs:[
-                                {
-                                    type:'component', 
-                                    actionType:'CounterList',
-                                    component:CounterList,
-                                    field:'counterList'
-                                }
-                        ]},
-                        Todos:{ inputs:[
-                                {
-                                    type:'component', 
-                                    actionType:'Todos',
-                                    component:TodosCom,
-                                    field:'todos'
-                                }
-                        ]},
-                        Grid:{
-                            inputs:[
-                                [{type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
-                                {type:'button', on:{click:()=>{Grid.hideColumns([4], true).refresh();}}, classNames:'.btn.btn-primary.btn-sm', label:'Hide Country'}
-                                ],
-                                {
-                                    type:'component',
-                                    actionType:'grid',
-                                    component:Grid,
-                                    field:'grid'
-                                }
-                            ]
-                        }
-                    }}            
+                    {
+                        type:'tabs', 
+                        activeTab:'Grid',
+                        footer:<div>Footer</div>,
+                        tabClick:(tabName, prevTab)=>{
+                          //return bool|Promise                          
+                          return true;
+                        },
+                        tabs:{                        
+                            Counter:{                                 
+                                inputs:[
+                                {type:'vnode', vnode:<div style={({height:'20px'})}></div>},
+                                    { size:3, 
+                                        type:'component', 
+                                        actionType:'Counter',
+                                        component:Counter,
+                                        field:'counter'
+                                    }
+                            ]},
+                            'Counter List':{ inputs:[
+                                    {
+                                        type:'component', 
+                                        actionType:'CounterList',
+                                        component:CounterList,
+                                        field:'counterList'
+                                    }
+                            ]},
+                            Todos:{ inputs:[
+                                    {
+                                        type:'component', 
+                                        actionType:'Todos',
+                                        component:TodosCom,
+                                        field:'todos'
+                                    }
+                            ]},
+                            Grid:{
+                                inputs:[
+                                    [{type:'button', on:{click:this.loadData}, classNames:'.btn.btn-primary.btn-sm', label:'Load Data'},
+                                    {type:'button', on:{click:()=>{Grid.hideColumns([4], true).refresh();}}, classNames:'.btn.btn-primary.btn-sm', label:'Hide Country'}
+                                    ],
+                                    {
+                                        type:'component',
+                                        actionType:'grid',
+                                        component:Grid,
+                                        field:'grid'
+                                    }
+                                ]
+                            },
+                            'Disabled':{
+                                disabled:true,
+                                inputs:[
+                                    {type:'vnode', vnode:<div>tab content</div>}
+                                ]
+                            },
+                            'I was Hidden':{
+                                hide:true,
+                                inputs:[
+                                    {type:'vnode', vnode:<div>tab content</div>}
+                                ]
+                            }
+                        }   
+                    }            
                 ]   
         };
     }
@@ -166,7 +187,7 @@ export default class FormExample{
         this.model=model;
         return <div>
         <div>
-         <button on-click={this.optionChanged.bind(this)}>Hide Name <i classNames="fa fa-home"></i></button>
+         <button on-click={this.optionChanged.bind(this)}>Change Form State <i classNames="fa fa-home"></i></button>
          
         </div>
             <TestForm model={model} dispatch={dispatch} />
@@ -200,11 +221,15 @@ export default class FormExample{
           //this.options.inputs[0][0].hide=true;
           //this.options.inputs[4].tabs.tab1.hide=false;
           //this.options.inputs[4].tabs.tab1.disabled=false;
-        //JuForm.optionsChanged();
+        //JuForm.refresh();
+       this.model.options.inputs[2].tabs['I was Hidden'].hide=false;
+       TestForm.findTab('Disabled')[0].disabled=false;
        TestForm.setSelectData('gender',[{text:'Male--', value:1},{text:'Female--', value:2}]);
        //JuForm.showModal(true);
        console.log(TestForm.getFormData());
-       TestForm.setFormData({name:'Abdulla-up',ox:{age:2.2}, gender:1, age2:'02/29/2000'})
+       TestForm
+       .setFormData({name:'Abdulla-up',ox:{age:2.2}, gender:1, age2:'02/29/2000'})
+       .refresh();
        console.log(TestForm.getFormData());
     }
 
