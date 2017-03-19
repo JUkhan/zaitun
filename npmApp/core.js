@@ -1,7 +1,6 @@
-const Router =require('./router');
-const snabbdom =require('snabbdom');
-
-var vnode=null;
+var Router =require('./router'),
+    snabbdom =require('snabbdom'),
+    vnode=null;
 
 function bootstrap(options){ 
         if(!options.containerDom){
@@ -17,13 +16,13 @@ function bootstrap(options){
         }
         Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
 } 
-const patch = snabbdom.init([
+var patch = snabbdom.init([
   require('snabbdom/modules/class'),          // makes it easy to toggle classes
   require('snabbdom/modules/props'),          // for setting properties on DOM elements
   require('snabbdom/modules/style'),          // handles styling on elements with support for animations
   require('snabbdom/modules/eventlisteners'), // attaches event listeners
-]);
-const h =require('snabbdom/h');
+]),
+h =require('snabbdom/h');
 function emptyCom(){
     return {
         init:function(){return {};}, 
@@ -110,7 +109,7 @@ function ComponentManager(){
         this.updateUI();            
     }
     this.updateUI=function() {
-        const newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
+        var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
         vnode = patch(vnode, newVnode);
     }
 
@@ -133,7 +132,7 @@ function ComponentManager(){
     this.destroy=function(path){
         try{
                if(this.child && typeof this.child.canDeactivate==='function'){
-                   const res=this.child.canDeactivate();
+                   var res=this.child.canDeactivate();
                    if(typeof res === 'object' && res.then){
                        var that=this;
                        res.then(function(val){

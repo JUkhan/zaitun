@@ -1,6 +1,6 @@
 {
   "name": "zaitun",
-  "version": "1.5.14",
+  "version": "1.5.16",
   "description": "javascript framework",
   "main": "index.js",
   "scripts": {
@@ -22,7 +22,7 @@
   "homepage": "https://github.com/JUkhan/zaitun#readme",
   
   "dependencies": {
-      "snabbdom": "^0.5.0",
+      "snabbdom": "^0.6.7",
       "snabbdom-jsx": "^0.3.1"
   }
 }

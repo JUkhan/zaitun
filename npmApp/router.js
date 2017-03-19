@@ -76,11 +76,10 @@ var Router = {
             it.addEventListener('click',function(ev){
                ev.preventDefault();
                if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;}
-               if(ev.target.href.indexOf('#') && window.location.href.indexOf('#')===-1){
-                   window.location.href=ev.target.href;
-                   return; 
-                } 
-               that.CM.destroy(ev.target.href);
+               if(ev.target.href.indexOf('#') 
+                    && window.location.href.indexOf('#')===-1
+                    && window.location.href.replace(/#(.*)$/, '') + '#' + that._fap===ev.target.href){return;}
+               that.CM.destroy(ev.target.href); 
             },false);
         })
         return this;
@@ -94,9 +93,11 @@ var Router = {
         }
         return this;
     },    
+    _fap:'',   
     setActivePath:function(path){  
-        if(path){    
-            this.check(this.clearSlashes(this.getFragment()||path));
+        if(path){ 
+            if(!this._fap){this._fap=path[0]==='/'?path:'/'+path;}            
+            this.check(this.clearSlashes(this.getFragment()||path));           
         }
     },
     render:function(route, routeParams, url){   
