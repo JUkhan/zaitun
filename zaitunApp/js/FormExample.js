@@ -9,6 +9,7 @@ import Todos from './todos/todos';
 import {juGrid} from './ui/juGrid';
 
 const TestForm=new juForm();
+const TestForm2=new juForm();
 const Counter=new clsCounter();
 const CounterList=new clsCounterList();
 const TodosCom=new Todos();
@@ -26,7 +27,7 @@ export default class FormExample{
        model.counterList=CounterList.init();
        model.todos=TodosCom.init();
        model.grid=this.gridOptions();
-       return model;
+       return {form1:model, form2:{options:this.getFormOptions2(), data:{name:'Abdulla'}}};
     }
     onViewInit(model, dispatch){        
         const countries=[
@@ -43,7 +44,7 @@ export default class FormExample{
         const emptyObj={name:'', age:16, address:'', single:false, country:''}
         return {
             tableClass:'.table-sm.table-bordered.xtable-responsive',            
-            headerClass:'.thead-inverse',
+            headerClass:'.thead-default',
             footerClass:'.thead-default', 
             pager:{pageSize:5, linkPages:10, enablePowerPage:0, nav:1, search:1, pagerInfo:1, elmSize:'sm'},
             hideHeader:!true,
@@ -96,7 +97,30 @@ export default class FormExample{
     nameClick(row, e){
         row.name=e.target.value;
         console.log(row.name, e);
-    }    
+    } 
+    getFormOptions2(){
+        return {
+            viewMode:'popup', title:'Popup Title', name:'pform', size:'lg',
+            modalClose:()=>true,
+            buttons:[{label:'Close',on:{click:()=>TestForm2.modalClose()}, classNames:'.btn.btn-outline-success', elmSize:'sm'}],
+             inputs:[
+                {type:'vnode', vnode:<div>Hello popup</div>},
+                {type:'text', field:'name', label:'Name'},
+                {type:'tabs', activeTab:'tab1',tabs:{
+                    tab1:{inputs:[{ 
+                                        type:'text', 
+                                        label:'Name',                                        
+                                        field:'name'
+                                    }]},
+                    tab2:{
+                        inputs:[
+                            {type:'vnode', vnode:<b>tab content</b>}
+                        ]
+                    }                
+                }}
+            ]
+        }
+    }   
     //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
     getFormOptions(model, dispatch){
        
@@ -188,29 +212,30 @@ export default class FormExample{
         return <div>
         <div>
          <button on-click={this.optionChanged.bind(this)}>Change Form State <i classNames="fa fa-home"></i></button>
-         
+         <button on-click={()=>TestForm2.showModal(1)}>Show Popup</button>
         </div>
-            <TestForm model={model} dispatch={dispatch} />
-            
+            <TestForm model={model.form1} dispatch={dispatch} />
+            <TestForm2 model={model.form2} dispatch={action=>dispatch({type:'form2', payload:action})} />
         </div>
     }
     update(model, action){   
         switch (action.type) {
             case 'Counter':
-                const res=Counter.update(model.counter, action.action);                   
-                return {...model, counter:res};              
+               model.form1.counter=Counter.update(model.form1.counter, action.action);                   
+                return model;              
             case 'CounterList':
-                const rescl=CounterList.update(model.counterList, action.action); 
-                return {...model, counterList:rescl};  
+                model.form1.counterList=CounterList.update(model.form1.counterList, action.action); 
+                return model;  
 
             case 'Todos':
-                const todos=TodosCom.update(model.todos, action.action); 
-                return {...model, todos:todos}; 
-            case TAB_CLICK:
-                console.log(action.payload)
+               model.form1.todos=TodosCom.update(model.form1.todos, action.action); 
+                return model; 
+            case 'form2':
+                console.log('form-2');
+                //model.form2=TestForm2.update(model.form2, action.payload);
                 return model;
             case 'grid':
-                model.grid=Grid.update(model.grid, action.action);               
+                model.form1.grid=Grid.update(model.form1.grid, action.action);               
                 return model;
             default:
                return model;
@@ -222,14 +247,14 @@ export default class FormExample{
           //this.options.inputs[4].tabs.tab1.hide=false;
           //this.options.inputs[4].tabs.tab1.disabled=false;
         //JuForm.refresh();
-       this.model.options.inputs[2].tabs['I was Hidden'].hide=false;
+       this.model.form1.options.inputs[2].tabs['I was Hidden'].hide=false;
        TestForm.findTab('Disabled')[0].disabled=false;
        TestForm.setSelectData('gender',[{text:'Male--', value:1},{text:'Female--', value:2}]);
        //JuForm.showModal(true);
        console.log(TestForm.getFormData());
        TestForm
-       .setFormData({name:'Abdulla-up',ox:{age:2.2}, gender:1, age2:'02/29/2000'})
-       .refresh();
+       .setFormData({name:'Abdulla-up',ox:{age:2.2}, gender:1, age2:'02/29/2000'}).refresh();
+       
        console.log(TestForm.getFormData());
     }
 

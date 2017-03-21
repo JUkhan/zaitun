@@ -6,7 +6,7 @@ const INC=Symbol('inc');
 const DEC=Symbol('dec');
 
 
-export default class clsCounter{ 
+export default class Counter{ 
     init(){       
         return {data:10}
     } 

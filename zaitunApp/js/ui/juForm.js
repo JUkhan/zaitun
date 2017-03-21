@@ -3,7 +3,6 @@ import {guid} from './utils';
 
 const TAB_CLICK=Symbol('TAB_CLICK');
 const OPTIONS_CHANGED=Symbol('OPTIONS_CHANGED');
-
 class juForm{
     constructor(){
         this.dispatch=undefined;
@@ -28,7 +27,6 @@ class juForm{
     }
     update(model, action){
         return model;
-           
     }
     createElements(options){
         const vnodes=[];
@@ -39,16 +37,17 @@ class juForm{
         }
         return vnodes
     }
-    modalClose(){
-        this.showModal(false);
+    modalClose(){        
         if(typeof this.options.modalClose==='function'){
-            this.options.modalClose();
+            this.options.modalClose() && this.showModal(false);
+        }else{
+            this.showModal(false);
         }
     }
     createModal(vnodes, id){ 
         const buttons=this.options.buttons||[];      
         return h('div.modal',{props:{id:id}},[
-            h('div.modal-dialog',{role:'document'},[
+            h('div.modal-dialog.modal-'+this.options.size,{role:'document'},[
                 h('div.modal-content',[
                     h('div.modal-header',[
                         h('div.modal-title', this.options.title||''),
@@ -147,7 +146,7 @@ class juForm{
             }
             velms.push(...this.createElements(item));            
             return h(`fieldset.col-md-${item.size||12}`,{props:{disabled:!!item.disabled}},velms);
-    }
+    }    
     createTabs(item){
         const elms=[], lies=[], tabcontents=[], tabNames=Object.keys(item.tabs);
         item.tabLink=item.activeTab;
@@ -199,6 +198,7 @@ class juForm{
                     if(hasChange){
                         hasChange(e.target.value, e);
                     }
+                    this.refresh();
                 };
         return events     
     }
@@ -319,7 +319,7 @@ class juForm{
             );
         
    }
-   _findTab(items, tabName){
+    _findTab(items, tabName){
         for(let item of items){          
                if(Array.isArray(item)){
                    const res=this._findTab(item, tabName);
@@ -327,7 +327,7 @@ class juForm{
                }
                else if(item.type==='tabs' && typeof item.tabs==='object'){                  
                   const find=item.tabs[tabName];
-                  if(find){return [find,item];}
+                  if(find){return [find, item];}
                }
            }
           return null; 
@@ -355,7 +355,7 @@ class juForm{
            return this._findField(this.options.inputs, fiendName);
         }
         return null;
-   }
+   }   
    selectTab(tabName, item=null){
        if(!item){
            item=this.findTab(tabName);
@@ -384,18 +384,17 @@ class juForm{
    }
    refresh(){
         this.dispatch({type:OPTIONS_CHANGED});
-        return this;
    }
    showModal(isOpen){ 
-       $('#'+this.modalId).modal(isOpen?'show':'hide');
-       return this;
+       if(isOpen) $('#'+this.modalId).modal({backdrop:false, show:true});
+       else  $('#'+this.modalId).modal('hide');
    }
    setSelectData(fieldName, data){
        const item=this.findField(fieldName);
        if(item){
-           item.data=data;          
+           item.data=data;
        }
-       return this
+       return this;
    }
    setFormData(data){
        this.model.data=data;      

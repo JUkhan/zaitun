@@ -2,16 +2,16 @@
 
 import {h, html} from 'zaitun';
 
-import clsCounter from './clsCounter';
+import counterCom from './Counter';
 
-const Counter=new clsCounter();
+const Counter=new counterCom();
 
 const ADD=Symbol('add');
 const REMOVE=Symbol('remove');
 const RESET=Symbol('reset');
 const UPDATE=Symbol('counterAction');
 
-export default class clsCounterList{
+export default class CounterList{
     
     init(){
         return {nextId:0, counters:[]}; 

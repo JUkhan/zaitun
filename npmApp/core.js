@@ -59,6 +59,9 @@ function ComponentManager(){
     this.initChildComponent=function(component){
             if(typeof component ==='object'){
                 this.child=component;
+            }
+            else if(this.key && this.cacheObj[this.key]){
+                this.child=this.getComponentFromCache(this.key).instance;
             }  
             else if(typeof component ==='function'){
                 this.child=new component();
@@ -91,9 +94,9 @@ function ComponentManager(){
             this.loadCom(route, params, url);
         }else{
             this.params=params;
-            this.initChildComponent(route.component);        
             this.key=route.cache?url:'';
-            this.model.child=(this.key && this.cacheObj[this.key])?this.getModelFromCache(this.key):this.child.init(this.dispatch, params);        
+            this.initChildComponent(route.component);
+            this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
             this.updateUI();
             if(typeof this.child.onViewInit==='function'){
                 this.child.onViewInit(this.model, this.dispatch);
@@ -122,7 +125,7 @@ function ComponentManager(){
     }
     this.fireDestroyEvent=function(){
             if(this.key){
-                this.setModelToCache(this.key, this.model.child);
+                this.setComponentToCache(this.key, this.child, this.model.child);
             }
             if(typeof this.child.onDestroy==='function'){
                 this.child.onDestroy();
@@ -154,11 +157,11 @@ function ComponentManager(){
                   console.log(ex);
               }
     }
-    this.getModelFromCache=function(key){
+    this.getComponentFromCache=function(key){
         return  this.cacheObj[key]||{};
     }
-    this.setModelToCache=function(key, value){
-         this.cacheObj[key]=value;
+    this.setComponentToCache=function(key, instance, state){
+         this.cacheObj[key]={instance:instance, state:state};
     }
 }
 module.exports=bootstrap;

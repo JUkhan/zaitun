@@ -21,13 +21,17 @@
     "browserify": "^13.0.0",
     "budo": "^7.1.0",
     "deumdify": "^1.2.4",
+    "tape": "^4.6.3",
     "uglify-js": "^2.8.13"
   },
   "scripts": {
     "build-npm-app-umd": "browserify npmApp/index.js -s zaitun -p deumdify -o npmApp/dist/zaitun.js",
+    "build-npm-app-umd-uglify": "browserify npmApp/index.js -s zaitun -p deumdify | uglifyjs  -o npmApp/dist/zaitun.js",
     "build-npm-app": "browserify npmApp/index.js -o npmApp/dist/zaitun.js -t [ babelify --presets [ es2015 stage-2 react ] ]",
     "build-zaitun-app-to-example": "browserify zaitunApp/js/main.js -o npmApp/example/bundle.js -t [ babelify --presets [ es2015 stage-2 react ] ]",
     "watch": "watchify app/js/main.js -t babelify --outfile app/build.js",
-    "zaitunApp": "budo zaitunApp/js/main.js:build.js --dir zaitunApp --verbose  --live -- -t babelify"
+    "zaitunApp": "budo zaitunApp/js/main.js:build.js --dir zaitunApp --verbose  --live -- -t babelify",
+    "test": "babel-node npmApp/test/test.js",
+    "uglify":"uglifyjs npmApp/dist/zaitun.js --compress --mangle -o npmApp/dist/zaitun.umd.min.js"
   }
 }

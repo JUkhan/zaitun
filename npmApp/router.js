@@ -89,7 +89,7 @@ var Router = {
         if(this.locationStrategy === 'history') {
             history.pushState(null, null, this.baseUrl + this.clearSlashes(path));
         } else {
-            window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + path;
+            this.CM.destroy(window.location.href.replace(/#(.*)$/, '') + '#' + path);
         }
         return this;
     },    

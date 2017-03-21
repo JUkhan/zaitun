@@ -61,7 +61,7 @@ class juPage{
                         h('option',{props:{value:50}},'50'),
                         h('option',{props:{value:100}},'100')                       
                     ]),
-                    h('span',`Page ${this.activePage} of ${this.totalPage}`)
+                    h('span',`Page ${this.totalPage?this.activePage:0} of ${this.totalPage}`)
                 ]);
         const elms=[];
         if(model.pagerInfo){elms.push(h('div.col-12.col-md-auto',[info]));}  

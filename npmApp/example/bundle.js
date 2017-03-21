@@ -124,6 +124,332 @@ module.exports = {
 };
 
 },{}],2:[function(require,module,exports){
+var Router =require('./router'),
+    snabbdom =require('snabbdom'),
+    vnode=null;
+
+function bootstrap(options){ 
+        if(!options.containerDom){
+            throw new Error('mountNode must be a css selector or a dom object');
+        }
+        if(typeof options.containerDom ==='string'){
+            vnode=document.querySelector(options.containerDom);
+        }else{
+            vnode=options.containerDom;
+        }
+        if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
+               throw new Error('bootstrap options: mainComponent missing.');
+        }
+        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
+} 
+var patch = snabbdom.init([
+  require('snabbdom/modules/class'),          // makes it easy to toggle classes
+  require('snabbdom/modules/props'),          // for setting properties on DOM elements
+  require('snabbdom/modules/style'),          // handles styling on elements with support for animations
+  require('snabbdom/modules/eventlisteners'), // attaches event listeners
+]),
+h =require('snabbdom/h');
+function emptyCom(){
+    return {
+        init:function(){return {};}, 
+        view:function(obj){return h('div.com-load','loading...');}
+    };
+}
+function ComponentManager(){    
+    this.mcom={};
+    this.child=emptyCom();
+    this.model={};
+    this.params=null;
+    this.devTool=null;
+    this.key='';
+    this.cacheObj={};
+   
+   this.initMainComponent=function(component){        
+        if(typeof component ==='object'){
+            this.mcom=component;
+        }  
+        else if(typeof component ==='function'){
+            this.mcom=new component();
+        }
+        this.validateCom(this.mcom);
+    }
+    this.validateCom=function(com){
+         
+        if(typeof com.init !=='function'){
+            com.init=function(){return {};};            
+        }
+        if(typeof com.view !=='function'){
+            throw new Error('Component must have a view function.');
+        }        
+    }
+    this.initChildComponent=function(component){
+            if(typeof component ==='object'){
+                this.child=component;
+            }
+            else if(this.key && this.cacheObj[this.key]){
+                this.child=this.getComponentFromCache(this.key).instance;
+            }  
+            else if(typeof component ==='function'){
+                this.child=new component();
+            }                    
+            this.validateCom(this.child);       
+    }
+    this.reset=function(){
+        this.model=this.mcom.init(this.dispatch, this.params);
+        if(typeof this.child.init ==='function'){
+             this.model.child=this.child.init(this.dispatch, this.params);
+        }       
+        this.updateUI();
+    }
+    this.updateByModel=function(model){
+        this.model=model;
+        this.updateUI();
+    } 
+    this.loadCom=function(route, params, url){
+        var that=this;   
+        route.loadComponent().then(function(com){
+            route.component=com.default;
+            route.loadComponent=undefined;
+			that.runChild(route, params, url);
+		});
+    }   
+    this.runChild=function(route, params, url){           
+        if(typeof route.loadComponent ==='function'){
+            this.child=emptyCom();
+            this.updateUI();         
+            this.loadCom(route, params, url);
+        }else{
+            this.params=params;
+            this.key=route.cache?url:'';
+            this.initChildComponent(route.component);
+            this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
+            this.updateUI();
+            if(typeof this.child.onViewInit==='function'){
+                this.child.onViewInit(this.model, this.dispatch);
+            } 
+            if(this.devTool){
+                this.devTool.reset();
+            }
+        }        
+    }
+    this.run=function(component){        
+        this.initMainComponent(component);
+        this.model=this.mcom.init(this.dispatch);        
+        this.updateUI();            
+    }
+    this.updateUI=function() {
+        var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
+        vnode = patch(vnode, newVnode);
+    }
+
+    this.dispatch=function(action) {        
+        this.model = this.mcom.update(this.model, action); 
+        this.updateUI(); 
+        if(this.devTool){
+            this.devTool.setAction(action, this.model);
+        }
+    }
+    this.fireDestroyEvent=function(){
+            if(this.key){
+                this.setComponentToCache(this.key, this.child, this.model.child);
+            }
+            if(typeof this.child.onDestroy==='function'){
+                this.child.onDestroy();
+            }
+
+    }
+    this.destroy=function(path){
+        try{
+               if(this.child && typeof this.child.canDeactivate==='function'){
+                   var res=this.child.canDeactivate();
+                   if(typeof res === 'object' && res.then){
+                       var that=this;
+                       res.then(function(val){
+                            if(val){
+                                 window.location.href=path;
+                                 that.fireDestroyEvent();
+                            }
+                       });
+                   }
+                   else if(res){
+                        window.location.href=path;
+                        this.fireDestroyEvent();
+                   }
+               }else{
+                   window.location.href=path;
+                   this.fireDestroyEvent();
+               }
+              }catch(ex){
+                  console.log(ex);
+              }
+    }
+    this.getComponentFromCache=function(key){
+        return  this.cacheObj[key]||{};
+    }
+    this.setComponentToCache=function(key, instance, state){
+         this.cacheObj[key]={instance:instance, state:state};
+    }
+}
+module.exports=bootstrap;
+},{"./router":14,"snabbdom":12,"snabbdom/h":5,"snabbdom/modules/class":8,"snabbdom/modules/eventlisteners":9,"snabbdom/modules/props":10,"snabbdom/modules/style":11}],3:[function(require,module,exports){
+
+const snabbdom = require('snabbdom');
+const h = require('snabbdom/h');
+
+const ResetComponent=Symbol('ResetComponent');
+const ResetTool=Symbol('ResetTool');
+const Action_Regenerate=Symbol('dec');
+const LogPayload=Symbol('LogPayload');
+const LogState=Symbol('LogState');
+const Resize=Symbol('resize');
+const SetAction=Symbol('setAction');
+const selectAction=Symbol('SelectAction')
+class devTool{
+    constructor(cm){       
+       this.createTools();
+       this.CM=null;       
+    }    
+    createTools(){       
+         const elm=document.createElement('DIV');
+         elm.setAttribute('class','dev-tool');
+         const size=windowSize();
+         this.height=size.height;
+         elm.style.left=(size.width-250)+'px';
+         elm.style.height=(size.height)+'px';         
+        const  elm2=document.createElement('DIV');
+         elm.appendChild(elm2);
+         document.body.appendChild(elm);
+         window.addEventListener('resize',()=>{
+            const size=windowSize();                  
+            elm.style.left=(size.width-250)+'px';
+            elm.style.height=(size.height)+'px';
+            if(this.toolHandler){
+                this.toolHandler({type:Resize, height:size.height});
+            }
+         }, false);
+          window.addEventListener('scroll',(e)=>{                 
+            elm.style.top=document.body.scrollTop+'px';              
+         }, false);
+
+         render(this.init(), elm2, this);
+    }
+    reset(){
+        this.toolHandler({type:ResetTool});
+    }
+    setCM(cm){        
+        this.CM=cm;
+        cm.devTool=this;
+    }
+    setAction(action, model){     
+        this.toolHandler({type:SetAction, payload:{action, model}})
+    }
+    init(){
+        return { height:this.height,  states:[]};
+    }
+    view({model, handler}){
+        this.toolHandler=handler;
+         return h('div.tool-body',[
+                    h('div.tool-header',[
+                        h('button', {on:{click:handler.bind(null, {type:ResetComponent})} },'Reset')
+                    ]),
+                    h('div.tool-states', {style:({height:(model.height-40)+'px'})},
+                        model.states.map((item, index)=>this.DebugStates(item, handler, index))
+                    )
+         ]);
+    }
+    DebugStates(item, handler, index){        
+        return h('div.tool-view', { key:index, class:({'selected-action':item.selected}), on:{click:handler.bind(null,{type:selectAction, payload:item})}},
+           [ h('div',[
+                h('button',{on:{click:handler.bind(null,{type:Action_Regenerate, payload:item})}},item.actionType)
+                ]),
+            h('div.tool-view-buttons',[
+                h('button', {on:{click:handler.bind(null,{type:LogPayload, payload:item})}},'Log Action'),
+                h('span.tool-space',''),
+                h('button', {on:{click:handler.bind(null,{type:LogState, payload:item})}},'Log State')
+            ])
+            ]
+        )
+    }
+    update(model, action){
+        
+        switch (action.type) {
+            case ResetComponent: 
+               this.CM.reset(); 
+              return Object.assign({}, model, {states: []});                       
+           case ResetTool: return {height:model.height, states:[]};
+
+           case Action_Regenerate:
+                this.CM.updateByModel(action.payload.model);
+                return model;
+           case LogPayload:                
+                console.log(action.payload.action);
+                return model;
+           case LogState:
+                console.log(action.payload.model);
+                return model;
+            case Resize: return Object.assign({}, model,{height:action.height});
+            case SetAction:  
+                const typeArr=[];
+                this.getType(action.payload.action,typeArr);              
+                const state=Object.assign({}, action.payload, {actionType:typeArr.filter(action=>action!=='CHILD').join('-')});
+                return Object.assign({},model, {states:[...model.states, state]});
+            case selectAction:                
+                model.states.forEach(ac=>ac.selected=false);
+                action.payload.selected=true;
+                return model;
+            default:
+                return model;
+        }
+    }
+    getType(action, typeArr){
+        var type=action.type;       
+        if(typeof type==='symbol'){
+            type=action.type.toString().replace('Symbol(','');
+            type=type.substr(0, type.length-1);
+        }
+        typeArr.push(type);
+        for(let prop in action){           
+            if(prop.toLowerCase().indexOf('action')>=0){
+                this.getType(action[prop], typeArr);return;
+            }
+        } 
+    }
+    
+}
+
+const patch = snabbdom.init([
+  require('snabbdom/modules/class'),         
+  require('snabbdom/modules/props'),          
+  require('snabbdom/modules/style'),          
+  require('snabbdom/modules/eventlisteners'), 
+]);
+function render(initState, oldVnode, com) {   
+        const newVnode = com.view({model:initState, handler:event=>{
+            const newState = com.update(initState, event);
+            render(newState, newVnode, com);
+        }});
+        patch(oldVnode, newVnode);
+    }
+function windowSize(){
+    var w = window,
+    d = document,
+    e = d.documentElement,
+    g = d.getElementsByTagName('body')[0],
+    width = w.innerWidth || e.clientWidth || g.clientWidth,
+    height = w.innerHeight|| e.clientHeight|| g.clientHeight;
+    return {width,height};
+}
+
+module.exports=devTool;
+},{"snabbdom":12,"snabbdom/h":5,"snabbdom/modules/class":8,"snabbdom/modules/eventlisteners":9,"snabbdom/modules/props":10,"snabbdom/modules/style":11}],4:[function(require,module,exports){
+
+const h =require('snabbdom/h');
+const jsx =require('snabbdom-jsx');
+const bootstrap =require('./core');
+const Router =require('./router');
+
+module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router}
+},{"./core":2,"./router":14,"snabbdom-jsx":1,"snabbdom/h":5}],5:[function(require,module,exports){
 var VNode = require('./vnode');
 var is = require('./is');
 
@@ -159,7 +485,7 @@ module.exports = function h(sel, b, c) {
   return VNode(sel, data, children, text, undefined);
 };
 
-},{"./is":4,"./vnode":10}],3:[function(require,module,exports){
+},{"./is":7,"./vnode":13}],6:[function(require,module,exports){
 function createElement(tagName){
   return document.createElement(tagName);
 }
@@ -215,13 +541,13 @@ module.exports = {
   setTextContent: setTextContent
 };
 
-},{}],4:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 module.exports = {
   array: Array.isArray,
   primitive: function(s) { return typeof s === 'string' || typeof s === 'number'; },
 };
 
-},{}],5:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 function updateClass(oldVnode, vnode) {
   var cur, name, elm = vnode.elm,
       oldClass = oldVnode.data.class,
@@ -246,7 +572,7 @@ function updateClass(oldVnode, vnode) {
 
 module.exports = {create: updateClass, update: updateClass};
 
-},{}],6:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 function invokeHandler(handler, vnode, event) {
   if (typeof handler === "function") {
     // call function handler
@@ -349,7 +675,7 @@ module.exports = {
   destroy: updateEventListeners
 };
 
-},{}],7:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function updateProps(oldVnode, vnode) {
   var key, cur, old, elm = vnode.elm,
       oldProps = oldVnode.data.props, props = vnode.data.props;
@@ -374,7 +700,7 @@ function updateProps(oldVnode, vnode) {
 
 module.exports = {create: updateProps, update: updateProps};
 
-},{}],8:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
 var nextFrame = function(fn) { raf(function() { raf(fn); }); };
 
@@ -445,7 +771,7 @@ function applyRemoveStyle(vnode, rm) {
 
 module.exports = {create: updateStyle, update: updateStyle, destroy: applyDestroyStyle, remove: applyRemoveStyle};
 
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 // jshint newcap: false
 /* global require, module, document, Node */
 'use strict';
@@ -707,339 +1033,14 @@ function init(modules, api) {
 
 module.exports = {init: init};
 
-},{"./htmldomapi":3,"./is":4,"./vnode":10}],10:[function(require,module,exports){
+},{"./htmldomapi":6,"./is":7,"./vnode":13}],13:[function(require,module,exports){
 module.exports = function(sel, data, children, text, elm) {
   var key = data === undefined ? undefined : data.key;
   return {sel: sel, data: data, children: children,
           text: text, elm: elm, key: key};
 };
 
-},{}],11:[function(require,module,exports){
-const Router =require('./router');
-const snabbdom =require('snabbdom');
-
-var vnode=null;
-
-function bootstrap(options){ 
-        if(!options.containerDom){
-            throw new Error('mountNode must be a css selector or a dom object');
-        }
-        if(typeof options.containerDom ==='string'){
-            vnode=document.querySelector(options.containerDom);
-        }else{
-            vnode=options.containerDom;
-        }
-        if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
-               throw new Error('bootstrap options: mainComponent missing.');
-        }
-        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
-} 
-const patch = snabbdom.init([
-  require('snabbdom/modules/class'),          // makes it easy to toggle classes
-  require('snabbdom/modules/props'),          // for setting properties on DOM elements
-  require('snabbdom/modules/style'),          // handles styling on elements with support for animations
-  require('snabbdom/modules/eventlisteners'), // attaches event listeners
-]);
-const h =require('snabbdom/h');
-function emptyCom(){
-    return {
-        init:function(){return {};}, 
-        view:function(obj){return h('div.com-load','loading...');}
-    };
-}
-function ComponentManager(){    
-    this.mcom={};
-    this.child=emptyCom();
-    this.model={};
-    this.params=null;
-    this.devTool=null;
-    this.key='';
-    this.cacheObj={};
-   
-   this.initMainComponent=function(component){        
-        if(typeof component ==='object'){
-            this.mcom=component;
-        }  
-        else if(typeof component ==='function'){
-            this.mcom=new component();
-        }
-        this.validateCom(this.mcom);
-    }
-    this.validateCom=function(com){
-         
-        if(typeof com.init !=='function'){
-            com.init=function(){return {};};            
-        }
-        if(typeof com.view !=='function'){
-            throw new Error('Component must have a view function.');
-        }        
-    }
-    this.initChildComponent=function(component){
-            if(typeof component ==='object'){
-                this.child=component;
-            }  
-            else if(typeof component ==='function'){
-                this.child=new component();
-            }                    
-            this.validateCom(this.child);       
-    }
-    this.reset=function(){
-        this.model=this.mcom.init(this.dispatch, this.params);
-        if(typeof this.child.init ==='function'){
-             this.model.child=this.child.init(this.dispatch, this.params);
-        }       
-        this.updateUI();
-    }
-    this.updateByModel=function(model){
-        this.model=model;
-        this.updateUI();
-    } 
-    this.loadCom=function(route, params, url){
-        var that=this;   
-        route.loadComponent().then(function(com){
-            route.component=com.default;
-            route.loadComponent=undefined;
-			that.runChild(route, params, url);
-		});
-    }   
-    this.runChild=function(route, params, url){           
-        if(typeof route.loadComponent ==='function'){
-            this.child=emptyCom();
-            this.updateUI();         
-            this.loadCom(route, params, url);
-        }else{
-            this.params=params;
-            this.initChildComponent(route.component);        
-            this.key=route.cache?url:'';
-            this.model.child=(this.key && this.cacheObj[this.key])?this.getModelFromCache(this.key):this.child.init(this.dispatch, params);        
-            this.updateUI();
-            if(typeof this.child.onViewInit==='function'){
-                this.child.onViewInit(this.model, this.dispatch);
-            } 
-            if(this.devTool){
-                this.devTool.reset();
-            }
-        }        
-    }
-    this.run=function(component){        
-        this.initMainComponent(component);
-        this.model=this.mcom.init(this.dispatch);        
-        this.updateUI();            
-    }
-    this.updateUI=function() {
-        const newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
-        vnode = patch(vnode, newVnode);
-    }
-
-    this.dispatch=function(action) {        
-        this.model = this.mcom.update(this.model, action); 
-        this.updateUI(); 
-        if(this.devTool){
-            this.devTool.setAction(action, this.model);
-        }
-    }
-    this.fireDestroyEvent=function(){
-            if(this.key){
-                this.setModelToCache(this.key, this.model.child);
-            }
-            if(typeof this.child.onDestroy==='function'){
-                this.child.onDestroy();
-            }
-
-    }
-    this.destroy=function(path){
-        try{
-               if(this.child && typeof this.child.canDeactivate==='function'){
-                   const res=this.child.canDeactivate();
-                   if(typeof res === 'object' && res.then){
-                       var that=this;
-                       res.then(function(val){
-                            if(val){
-                                 window.location.href=path;
-                                 that.fireDestroyEvent();
-                            }
-                       });
-                   }
-                   else if(res){
-                        window.location.href=path;
-                        this.fireDestroyEvent();
-                   }
-               }else{
-                   window.location.href=path;
-                   this.fireDestroyEvent();
-               }
-              }catch(ex){
-                  console.log(ex);
-              }
-    }
-    this.getModelFromCache=function(key){
-        return  this.cacheObj[key]||{};
-    }
-    this.setModelToCache=function(key, value){
-         this.cacheObj[key]=value;
-    }
-}
-//export default bootstrap;
-module.exports=bootstrap;
-},{"./router":14,"snabbdom":9,"snabbdom/h":2,"snabbdom/modules/class":5,"snabbdom/modules/eventlisteners":6,"snabbdom/modules/props":7,"snabbdom/modules/style":8}],12:[function(require,module,exports){
-
-const snabbdom = require('snabbdom');
-const h = require('snabbdom/h');
-
-const ResetComponent=Symbol('ResetComponent');
-const ResetTool=Symbol('ResetTool');
-const Action_Regenerate=Symbol('dec');
-const LogPayload=Symbol('LogPayload');
-const LogState=Symbol('LogState');
-const Resize=Symbol('resize');
-const SetAction=Symbol('setAction');
-const selectAction=Symbol('SelectAction')
-class devTool{
-    constructor(cm){       
-       this.createTools();
-       this.CM=null;       
-    }    
-    createTools(){       
-         const elm=document.createElement('DIV');
-         elm.setAttribute('class','dev-tool');
-         const size=windowSize();
-         this.height=size.height;
-         elm.style.left=(size.width-250)+'px';
-         elm.style.height=(size.height)+'px';         
-        const  elm2=document.createElement('DIV');
-         elm.appendChild(elm2);
-         document.body.appendChild(elm);
-         window.addEventListener('resize',()=>{
-            const size=windowSize();                  
-            elm.style.left=(size.width-250)+'px';
-            elm.style.height=(size.height)+'px';
-            if(this.toolHandler){
-                this.toolHandler({type:Resize, height:size.height});
-            }
-         }, false);
-          window.addEventListener('scroll',(e)=>{                 
-            elm.style.top=document.body.scrollTop+'px';              
-         }, false);
-
-         render(this.init(), elm2, this);
-    }
-    reset(){
-        this.toolHandler({type:ResetTool});
-    }
-    setCM(cm){        
-        this.CM=cm;
-        cm.devTool=this;
-    }
-    setAction(action, model){     
-        this.toolHandler({type:SetAction, payload:{action, model}})
-    }
-    init(){
-        return { height:this.height,  states:[]};
-    }
-    view({model, handler}){
-        this.toolHandler=handler;
-         return h('div.tool-body',[
-                    h('div.tool-header',[
-                        h('button', {on:{click:handler.bind(null, {type:ResetComponent})} },'Reset')
-                    ]),
-                    h('div.tool-states', {style:({height:(model.height-40)+'px'})},
-                        model.states.map((item, index)=>this.DebugStates(item, handler, index))
-                    )
-         ]);
-    }
-    DebugStates(item, handler, index){        
-        return h('div.tool-view', { key:index, class:({'selected-action':item.selected}), on:{click:handler.bind(null,{type:selectAction, payload:item})}},
-           [ h('div',[
-                h('button',{on:{click:handler.bind(null,{type:Action_Regenerate, payload:item})}},item.actionType)
-                ]),
-            h('div.tool-view-buttons',[
-                h('button', {on:{click:handler.bind(null,{type:LogPayload, payload:item})}},'Log Action'),
-                h('span.tool-space',''),
-                h('button', {on:{click:handler.bind(null,{type:LogState, payload:item})}},'Log State')
-            ])
-            ]
-        )
-    }
-    update(model, action){
-        
-        switch (action.type) {
-            case ResetComponent: 
-               this.CM.reset(); 
-              return Object.assign({}, model, {states: []});                       
-           case ResetTool: return {height:model.height, states:[]};
-
-           case Action_Regenerate:
-                this.CM.updateByModel(action.payload.model);
-                return model;
-           case LogPayload:                
-                console.log(action.payload.action);
-                return model;
-           case LogState:
-                console.log(action.payload.model);
-                return model;
-            case Resize: return Object.assign({}, model,{height:action.height});
-            case SetAction:  
-                const typeArr=[];
-                this.getType(action.payload.action,typeArr);              
-                const state=Object.assign({}, action.payload, {actionType:typeArr.filter(action=>action!=='CHILD').join('-')});
-                return Object.assign({},model, {states:[...model.states, state]});
-            case selectAction:                
-                model.states.forEach(ac=>ac.selected=false);
-                action.payload.selected=true;
-                return model;
-            default:
-                return model;
-        }
-    }
-    getType(action, typeArr){
-        var type=action.type;       
-        if(typeof type==='symbol'){
-            type=action.type.toString().replace('Symbol(','');
-            type=type.substr(0, type.length-1);
-        }
-        typeArr.push(type);
-        for(let prop in action){           
-            if(prop.toLowerCase().indexOf('action')>=0){
-                this.getType(action[prop], typeArr);return;
-            }
-        } 
-    }
-    
-}
-
-const patch = snabbdom.init([
-  require('snabbdom/modules/class'),         
-  require('snabbdom/modules/props'),          
-  require('snabbdom/modules/style'),          
-  require('snabbdom/modules/eventlisteners'), 
-]);
-function render(initState, oldVnode, com) {   
-        const newVnode = com.view({model:initState, handler:event=>{
-            const newState = com.update(initState, event);
-            render(newState, newVnode, com);
-        }});
-        patch(oldVnode, newVnode);
-    }
-function windowSize(){
-    var w = window,
-    d = document,
-    e = d.documentElement,
-    g = d.getElementsByTagName('body')[0],
-    width = w.innerWidth || e.clientWidth || g.clientWidth,
-    height = w.innerHeight|| e.clientHeight|| g.clientHeight;
-    return {width,height};
-}
-
-module.exports=devTool;
-},{"snabbdom":9,"snabbdom/h":2,"snabbdom/modules/class":5,"snabbdom/modules/eventlisteners":6,"snabbdom/modules/props":7,"snabbdom/modules/style":8}],13:[function(require,module,exports){
-
-const h =require('snabbdom/h');
-const jsx =require('snabbdom-jsx');
-const bootstrap =require('./core');
-const Router =require('./router');
-
-module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router}
-},{"./core":11,"./router":14,"snabbdom-jsx":1,"snabbdom/h":2}],14:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var Router = {
     routes: [],
     locationStrategy: 'hash',
@@ -1117,8 +1118,11 @@ var Router = {
         Array.from(document.querySelectorAll('a')).forEach(function(it){
             it.addEventListener('click',function(ev){
                ev.preventDefault();
-               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;} 
-               that.CM.destroy(ev.target.href);
+               if(that.clearSlashes(ev.target.href)===that.clearSlashes(window.location.href)) {return;}
+               if(ev.target.href.indexOf('#') 
+                    && window.location.href.indexOf('#')===-1
+                    && window.location.href.replace(/#(.*)$/, '') + '#' + that._fap===ev.target.href){return;}
+               that.CM.destroy(ev.target.href); 
             },false);
         })
         return this;
@@ -1128,13 +1132,15 @@ var Router = {
         if(this.locationStrategy === 'history') {
             history.pushState(null, null, this.baseUrl + this.clearSlashes(path));
         } else {
-            window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + path;
+            this.CM.destroy(window.location.href.replace(/#(.*)$/, '') + '#' + path);
         }
         return this;
     },    
+    _fap:'',   
     setActivePath:function(path){  
-        if(path){    
-            this.check(this.clearSlashes(this.getFragment()||path));
+        if(path){ 
+            if(!this._fap){this._fap=path[0]==='/'?path:'/'+path;}            
+            this.check(this.clearSlashes(this.getFragment()||path));           
         }
     },
     render:function(route, routeParams, url){   
@@ -1153,302 +1159,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /** @jsx html */
-
-var _zaitun = require('zaitun');
-
-var _juForm = require('./ui/juForm/juForm');
-
-var _clsCounter = require('./clsCounter');
-
-var _clsCounter2 = _interopRequireDefault(_clsCounter);
-
-var _clsCounterList = require('./clsCounterList');
-
-var _clsCounterList2 = _interopRequireDefault(_clsCounterList);
-
-var _todos = require('./todos/todos');
-
-var _todos2 = _interopRequireDefault(_todos);
-
-var _juGrid = require('./ui/juGrid/juGrid');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var TestForm = new _juForm.juForm();
-var Counter = new _clsCounter2.default();
-var CounterList = new _clsCounterList2.default();
-var TodosCom = new _todos2.default();
-var Grid = new _juGrid.juGrid();
-
-var FormExample = function () {
-    function FormExample() {
-        _classCallCheck(this, FormExample);
-    }
-
-    _createClass(FormExample, [{
-        key: 'init',
-        value: function init(dispatch) {
-            var model = {};
-            model.data = { name: 'Abdulla', ox: { age: 32 }, gender: 2 };
-            model.options = this.getFormOptions(model, dispatch);
-            model.counter = Counter.init();
-            model.counterList = CounterList.init();
-            model.todos = TodosCom.init();
-            model.grid = this.gridOptions();
-            return model;
-        }
-    }, {
-        key: 'onViewInit',
-        value: function onViewInit(model, dispatch) {
-            var countries = [{ text: 'Bangladesh', value: 1 }, { text: 'Pakistan', value: 2 }, { text: 'Ujbikistan', value: 3 }];
-            Grid.setSelectData(4, countries);
-        }
-    }, {
-        key: 'formClass',
-        value: function formClass() {
-            return { 'form-control': 1, 'form-control-sm': 1 };
-        }
-    }, {
-        key: 'gridOptions',
-        value: function gridOptions() {
-            var _this = this;
-
-            var emptyObj = { name: '', age: 16, address: '', single: false, country: '' };
-            return {
-                tableClass: '.table-sm.table-bordered.xtable-responsive',
-                headerClass: '.thead-inverse',
-                footerClass: '.thead-default',
-                pager: { pageSize: 5, linkPages: 10, enablePowerPage: 0, nav: 1, search: 1, pagerInfo: 1, elmSize: 'sm' },
-                hideHeader: !true,
-                hideFooter: !true,
-                hidePager: !true,
-                //aes:true, //disallowed empty selection --default false
-                pagerPos: 'top', //top|bottom|both --default both
-                //pageChange:data=>Grid.selectRow(0),
-                singleSelect: true,
-                //multiSelect:true,
-                selectedRows: function selectedRows(rows, ri, ev) {
-                    _this.selectedRow = rows;console.log('sr', rows);
-                },
-                recordChange: function recordChange(row, col, ri, ev) {
-                    Grid.refresh();
-                },
-                //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
-                //style:(row, i)=>({color:'gray'}),
-                //class:(row, i)=>({hide:1}),          
-                columns: [{ header: 'Name', hClass: '.max', sort: true, iopts: { class: function _class(r) {
-                            return _this.formClass();
-                        } }, focus: true, field: 'name', type: 'text' }, { header: 'Age', sort: true, iopts: { class: function _class(r) {
-                            return _this.formClass();
-                        } }, editPer: function editPer(row) {
-                        return false;
-                    }, field: 'age', type: 'number', tnsValue: function tnsValue(val) {
-                        return val + ' - formated';
-                    } }, { header: 'Birth Date', sort: true, iopts: { class: function _class(r) {
-                            return _this.formClass();
-                        } }, field: 'address', type: 'date' }, { id: 4, header: 'Country', iopts: { class: function _class(r) {
-                            return _this.formClass();
-                        } }, field: 'country', type: 'select' }, { header: 'Single?', field: 'single', type: 'checkbox', tnsValue: function tnsValue(val) {
-                        return val ? 'Yes' : 'No';
-                    } }],
-                xheaders: [[{ text: 'Name', props: { colSpan: 3 } }, { text: 'Country', props: { colSpan: 2 } }]],
-                footers: [
-                //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
-                [{ cellRenderer: function cellRenderer(data) {
-                        return (0, _zaitun.html)(
-                            'b',
-                            null,
-                            'Total Rows: ',
-                            data.length
-                        );
-                    } }, { cellRenderer: function cellRenderer(data) {
-                        return (0, _zaitun.html)(
-                            'div',
-                            null,
-                            (0, _zaitun.html)(
-                                'button',
-                                { 'on-click': function onClick() {
-                                        return Grid.addRow(_extends({}, emptyObj)).refresh();
-                                    } },
-                                'Add ',
-                                (0, _zaitun.html)('i', { classNames: 'fa fa-plus' })
-                            ),
-                            '\xA0',
-                            (0, _zaitun.html)(
-                                'button',
-                                { disabled: Grid.data.length === 0, 'on-click': function onClick() {
-                                        return confirm('Remove sure?') && Grid.removeRow(_this.selectedRow).pager.clickPage(Grid.pager.activePage);
-                                    } },
-                                'Remove ',
-                                (0, _zaitun.html)('i', { classNames: 'fa fa-trash' })
-                            )
-                        );
-                    }
-                }, { props: { colSpan: 2 }, cellRenderer: function cellRenderer(d) {
-                        return (0, _zaitun.html)(
-                            'b',
-                            null,
-                            'Total Selected Rows: ',
-                            d.filter(function (_) {
-                                return _.selected;
-                            }).length
-                        );
-                    } }, { cellRenderer: function cellRenderer(data) {
-                        return (0, _zaitun.html)(
-                            'b',
-                            null,
-                            data.reduce(function (a, b) {
-                                return a + (b.single ? 1 : 0);
-                            }, 0)
-                        );
-                    } }]]
-            };
-        }
-    }, {
-        key: 'nameClick',
-        value: function nameClick(row, e) {
-            row.name = e.target.value;
-            console.log(row.name, e);
-        }
-        //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
-
-    }, {
-        key: 'getFormOptions',
-        value: function getFormOptions(model, dispatch) {
-
-            return {
-                viewMode: 'form', name: 'form1', labelSize: 1, labelPos: 'left', title: 'Form Title',
-                inputs: [[{ field: 'ox.age', required: true, danger: 'danger', label: 'Adress', type: 'text', size: 3 }, { field: 'age2', label: 'Adress2', props: { maxLength: 10, placeholder: '00/00/0000' },
-                    success: true, type: 'text', size: 3 }], { field: 'gender', required: true, ignoreLabelSWD: 1, warning: 'warning', on: { input: function input(val) {
-                            return console.log(val);
-                        } }, size: 5, type: 'select', label: 'Gender', data: [{ text: 'Male', value: 1 }, { text: 'Female', value: 2 }] }, { type: 'tabs', activeTab: 'Grid', footer: (0, _zaitun.html)(
-                        'div',
-                        null,
-                        'Footer'
-                    ), tabs: {
-
-                        Counter: { inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)('div', { style: { height: '20px' } }) }, { size: 3,
-                                type: 'component',
-                                actionType: 'Counter',
-                                component: Counter,
-                                field: 'counter'
-                            }] },
-                        'Counter List': { inputs: [{
-                                type: 'component',
-                                actionType: 'CounterList',
-                                component: CounterList,
-                                field: 'counterList'
-                            }] },
-                        Todos: { inputs: [{
-                                type: 'component',
-                                actionType: 'Todos',
-                                component: TodosCom,
-                                field: 'todos'
-                            }] },
-                        Grid: {
-                            inputs: [[{ type: 'button', on: { click: this.loadData }, classNames: '.btn.btn-primary.btn-sm', label: 'Load Data' }, { type: 'button', on: { click: function click() {
-                                        Grid.hideColumns([4], true).refresh();
-                                    } }, classNames: '.btn.btn-primary.btn-sm', label: 'Hide Country' }], {
-                                type: 'component',
-                                actionType: 'grid',
-                                component: Grid,
-                                field: 'grid'
-                            }]
-                        }
-                    } }]
-            };
-        }
-    }, {
-        key: 'loadData',
-        value: function loadData(dispatch) {
-
-            var data = [];
-            for (var i = 0; i < 7; i++) {
-                data.push({ name: 'Abdulla' + i, age: 32,
-                    address: '2017-02-15', single: i % 2 ? true : false,
-                    country: Math.floor(Math.random() * 3) + 1 });
-            }
-            Grid.setData(data).selectRow(0).refresh();
-        }
-    }, {
-        key: 'view',
-        value: function view(_ref) {
-            var model = _ref.model,
-                dispatch = _ref.dispatch;
-
-            this.model = model;
-            return (0, _zaitun.html)(
-                'div',
-                null,
-                (0, _zaitun.html)(
-                    'div',
-                    null,
-                    (0, _zaitun.html)(
-                        'button',
-                        { 'on-click': this.optionChanged.bind(this) },
-                        'Hide Name ',
-                        (0, _zaitun.html)('i', { classNames: 'fa fa-home' })
-                    )
-                ),
-                (0, _zaitun.html)(TestForm, { model: model, dispatch: dispatch })
-            );
-        }
-    }, {
-        key: 'update',
-        value: function update(model, action) {
-            switch (action.type) {
-                case 'Counter':
-                    var res = Counter.update(model.counter, action.action);
-                    return _extends({}, model, { counter: res });
-                case 'CounterList':
-                    var rescl = CounterList.update(model.counterList, action.action);
-                    return _extends({}, model, { counterList: rescl });
-
-                case 'Todos':
-                    var todos = TodosCom.update(model.todos, action.action);
-                    return _extends({}, model, { todos: todos });
-                case _juForm.TAB_CLICK:
-                    console.log(action.payload);
-                    return model;
-                case 'grid':
-                    model.grid = Grid.update(model.grid, action.action);
-                    return model;
-                default:
-                    return model;
-            }
-        }
-    }, {
-        key: 'optionChanged',
-        value: function optionChanged() {
-            //this.options.inputs[0][0].hide=true;
-            //this.options.inputs[4].tabs.tab1.hide=false;
-            //this.options.inputs[4].tabs.tab1.disabled=false;
-            //JuForm.optionsChanged();
-            TestForm.setSelectData('gender', [{ text: 'Male--', value: 1 }, { text: 'Female--', value: 2 }]);
-            //JuForm.showModal(true);
-            console.log(TestForm.getFormData());
-            TestForm.setFormData({ name: 'Abdulla-up', ox: { age: 2.2 }, gender: 1, age2: '02/29/2000' });
-            console.log(TestForm.getFormData());
-        }
-    }]);
-
-    return FormExample;
-}();
-
-exports.default = FormExample;
-
-},{"./clsCounter":16,"./clsCounterList":17,"./todos/todos":21,"./ui/juForm/juForm":22,"./ui/juGrid/juGrid":23,"zaitun":13}],16:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /** @jsx html */
 
 var _zaitun = require('zaitun');
@@ -1458,12 +1168,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 var INC = Symbol('inc');
 var DEC = Symbol('dec');
 
-var clsCounter = function () {
-    function clsCounter() {
-        _classCallCheck(this, clsCounter);
+var Counter = function () {
+    function Counter() {
+        _classCallCheck(this, Counter);
     }
 
-    _createClass(clsCounter, [{
+    _createClass(Counter, [{
         key: 'init',
         value: function init() {
             return { data: 10 };
@@ -1521,12 +1231,12 @@ var clsCounter = function () {
         }
     }]);
 
-    return clsCounter;
+    return Counter;
 }();
 
-exports.default = clsCounter;
+exports.default = Counter;
 
-},{"zaitun":13}],17:[function(require,module,exports){
+},{"zaitun":4}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1539,9 +1249,9 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _zaitun = require('zaitun');
 
-var _clsCounter = require('./clsCounter');
+var _Counter = require('./Counter');
 
-var _clsCounter2 = _interopRequireDefault(_clsCounter);
+var _Counter2 = _interopRequireDefault(_Counter);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1549,19 +1259,19 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Counter = new _clsCounter2.default();
+var Counter = new _Counter2.default();
 
 var ADD = Symbol('add');
 var REMOVE = Symbol('remove');
 var RESET = Symbol('reset');
 var UPDATE = Symbol('counterAction');
 
-var clsCounterList = function () {
-    function clsCounterList() {
-        _classCallCheck(this, clsCounterList);
+var CounterList = function () {
+    function CounterList() {
+        _classCallCheck(this, CounterList);
     }
 
-    _createClass(clsCounterList, [{
+    _createClass(CounterList, [{
         key: 'init',
         value: function init() {
             return { nextId: 0, counters: [] };
@@ -1655,12 +1365,547 @@ var clsCounterList = function () {
         }
     }]);
 
-    return clsCounterList;
+    return CounterList;
 }();
 
-exports.default = clsCounterList;
+exports.default = CounterList;
 
-},{"./clsCounter":16,"zaitun":13}],18:[function(require,module,exports){
+},{"./Counter":15,"zaitun":4}],17:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /** @jsx html */
+
+var _zaitun = require('zaitun');
+
+var _juForm = require('./ui/juForm');
+
+var _Counter = require('./Counter');
+
+var _Counter2 = _interopRequireDefault(_Counter);
+
+var _CounterList = require('./CounterList');
+
+var _CounterList2 = _interopRequireDefault(_CounterList);
+
+var _todos = require('./todos/todos');
+
+var _todos2 = _interopRequireDefault(_todos);
+
+var _juGrid = require('./ui/juGrid');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var TestForm = new _juForm.juForm();
+var TestForm2 = new _juForm.juForm();
+var Counter = new _Counter2.default();
+var CounterList = new _CounterList2.default();
+var TodosCom = new _todos2.default();
+var Grid = new _juGrid.juGrid();
+
+var FormExample = function () {
+    function FormExample() {
+        _classCallCheck(this, FormExample);
+
+        this.selectedRow = {};
+    }
+
+    _createClass(FormExample, [{
+        key: 'init',
+        value: function init(dispatch) {
+            var model = {};
+            model.data = { name: 'Abdulla', ox: { age: 32 }, gender: 2 };
+            model.options = this.getFormOptions(model, dispatch);
+            model.counter = Counter.init();
+            model.counterList = CounterList.init();
+            model.todos = TodosCom.init();
+            model.grid = this.gridOptions();
+            return { form1: model, form2: { options: this.getFormOptions2(), data: { name: 'Abdulla' } } };
+        }
+    }, {
+        key: 'onViewInit',
+        value: function onViewInit(model, dispatch) {
+            var countries = [{ text: 'Bangladesh', value: 1 }, { text: 'Pakistan', value: 2 }, { text: 'Uzbekistan', value: 3 }];
+            Grid.setSelectData(4, countries);
+        }
+    }, {
+        key: 'formClass',
+        value: function formClass() {
+            return { 'form-control': 1, 'form-control-sm': 1 };
+        }
+    }, {
+        key: 'gridOptions',
+        value: function gridOptions() {
+            var _this = this;
+
+            var emptyObj = { name: '', age: 16, address: '', single: false, country: '' };
+            return {
+                tableClass: '.table-sm.table-bordered.xtable-responsive',
+                headerClass: '.thead-default',
+                footerClass: '.thead-default',
+                pager: { pageSize: 5, linkPages: 10, enablePowerPage: 0, nav: 1, search: 1, pagerInfo: 1, elmSize: 'sm' },
+                hideHeader: !true,
+                hideFooter: !true,
+                hidePager: !true,
+                //aes:true, //disallowed empty selection --default false
+                pagerPos: 'top', //top|bottom|both --default both
+                //pageChange:data=>Grid.selectRow(0),
+                singleSelect: true,
+                //multiSelect:true,
+                selectedRows: function selectedRows(rows, ri, ev) {
+                    //this.selectedRow.editable=false;
+                    //rows.editable=true;
+                    _this.selectedRow = rows;
+                },
+                aews: true, //apply Editable When Selected - default true 
+                recordChange: function recordChange(row, col, ri, ev) {
+                    Grid.refresh();
+                },
+                //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
+                //style:(row, i)=>({color:'gray'}),
+                //class:(row, i)=>({hide:1}),          
+                columns: [{ header: 'Name', hClass: '.max', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, focus: true, field: 'name', type: 'text' }, { header: 'Age', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, editPer: function editPer(row) {
+                        return false;
+                    }, field: 'age', type: 'number', tnsValue: function tnsValue(val) {
+                        return val + ' - formated';
+                    } }, { header: 'Birth Date', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, field: 'address', type: 'date' }, { id: 4, header: 'Country', iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, field: 'country', type: 'select' }, { header: 'Single?', field: 'single', type: 'checkbox', tnsValue: function tnsValue(val) {
+                        return val ? 'Yes' : 'No';
+                    } }],
+                xheaders: [[{ text: 'Name', props: { colSpan: 3 } }, { text: 'Country', props: { colSpan: 2 } }]],
+                footers: [
+                //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
+                [{ cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            'Total Rows: ',
+                            data.length
+                        );
+                    } }, { cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'div',
+                            null,
+                            (0, _zaitun.html)(
+                                'button',
+                                { 'on-click': function onClick() {
+                                        return Grid.addRow(_extends({}, emptyObj)).refresh();
+                                    } },
+                                'Add ',
+                                (0, _zaitun.html)('i', { classNames: 'fa fa-plus' })
+                            ),
+                            '\xA0',
+                            (0, _zaitun.html)(
+                                'button',
+                                { disabled: Grid.data.length === 0, 'on-click': function onClick() {
+                                        return confirm('Remove sure?') && Grid.removeRow(_this.selectedRow).pager.clickPage(Grid.pager.activePage);
+                                    } },
+                                'Remove ',
+                                (0, _zaitun.html)('i', { classNames: 'fa fa-trash' })
+                            )
+                        );
+                    }
+                }, { props: { colSpan: 2 }, cellRenderer: function cellRenderer(d) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            'Total Selected Rows: ',
+                            d.filter(function (_) {
+                                return _.selected;
+                            }).length
+                        );
+                    } }, { cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            data.reduce(function (a, b) {
+                                return a + (b.single ? 1 : 0);
+                            }, 0)
+                        );
+                    } }]]
+            };
+        }
+    }, {
+        key: 'nameClick',
+        value: function nameClick(row, e) {
+            row.name = e.target.value;
+            console.log(row.name, e);
+        }
+    }, {
+        key: 'getFormOptions2',
+        value: function getFormOptions2() {
+            return {
+                viewMode: 'popup', title: 'Popup Title', name: 'pform', size: 'lg',
+                modalClose: function modalClose() {
+                    return true;
+                },
+                buttons: [{ label: 'Close', on: { click: function click() {
+                            return TestForm2.modalClose();
+                        } }, classNames: '.btn.btn-outline-success', elmSize: 'sm' }],
+                inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)(
+                        'div',
+                        null,
+                        'Hello popup'
+                    ) }, { type: 'text', field: 'name', label: 'Name' }, { type: 'tabs', activeTab: 'tab1', tabs: {
+                        tab1: { inputs: [{
+                                type: 'text',
+                                label: 'Name',
+                                field: 'name'
+                            }] },
+                        tab2: {
+                            inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)(
+                                    'b',
+                                    null,
+                                    'tab content'
+                                ) }]
+                        }
+                    } }]
+            };
+        }
+        //{field:'age',  label:'Adress', type:'number', size:4, warning:'warning', info:'hello info',elmSize:'sm'}
+
+    }, {
+        key: 'getFormOptions',
+        value: function getFormOptions(model, dispatch) {
+
+            return {
+                viewMode: 'form', name: 'form1', labelSize: 1, labelPos: 'left', title: 'Form Title',
+                inputs: [[{ field: 'ox.age', required: true, danger: 'danger', label: 'Adress', type: 'text', size: 3 }, { field: 'age2', label: 'Adress2', props: { maxLength: 10, placeholder: '00/00/0000' },
+                    success: true, type: 'text', size: 3 }], { field: 'gender', required: true, ignoreLabelSWD: 1, warning: 'warning', on: { input: function input(val) {
+                            return console.log(val);
+                        } }, size: 5, type: 'select', label: 'Gender', data: [{ text: 'Male', value: 1 }, { text: 'Female', value: 2 }] }, {
+                    type: 'tabs',
+                    activeTab: 'Grid',
+                    footer: (0, _zaitun.html)(
+                        'div',
+                        null,
+                        'Footer'
+                    ),
+                    tabClick: function tabClick(tabName, prevTab) {
+                        //return bool|Promise                          
+                        return true;
+                    },
+                    tabs: {
+                        Counter: {
+                            inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)('div', { style: { height: '20px' } }) }, { size: 3,
+                                type: 'component',
+                                actionType: 'Counter',
+                                component: Counter,
+                                field: 'counter'
+                            }] },
+                        'Counter List': { inputs: [{
+                                type: 'component',
+                                actionType: 'CounterList',
+                                component: CounterList,
+                                field: 'counterList'
+                            }] },
+                        Todos: { inputs: [{
+                                type: 'component',
+                                actionType: 'Todos',
+                                component: TodosCom,
+                                field: 'todos'
+                            }] },
+                        Grid: {
+                            inputs: [[{ type: 'button', on: { click: this.loadData }, classNames: '.btn.btn-primary.btn-sm', label: 'Load Data' }, { type: 'button', on: { click: function click() {
+                                        Grid.hideColumns([4], true).refresh();
+                                    } }, classNames: '.btn.btn-primary.btn-sm', label: 'Hide Country' }], {
+                                type: 'component',
+                                actionType: 'grid',
+                                component: Grid,
+                                field: 'grid'
+                            }]
+                        },
+                        'Disabled': {
+                            disabled: true,
+                            inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)(
+                                    'div',
+                                    null,
+                                    'tab content'
+                                ) }]
+                        },
+                        'I was Hidden': {
+                            hide: true,
+                            inputs: [{ type: 'vnode', vnode: (0, _zaitun.html)(
+                                    'div',
+                                    null,
+                                    'tab content'
+                                ) }]
+                        }
+                    }
+                }]
+            };
+        }
+    }, {
+        key: 'loadData',
+        value: function loadData(dispatch) {
+
+            var data = [];
+            for (var i = 0; i < 7; i++) {
+                data.push({ name: 'Abdulla' + i, age: 32,
+                    address: '2017-02-15', single: i % 2 ? true : false,
+                    country: Math.floor(Math.random() * 3) + 1 });
+            }
+            Grid.setData(data).selectRow(0).refresh();
+        }
+    }, {
+        key: 'view',
+        value: function view(_ref) {
+            var model = _ref.model,
+                _dispatch = _ref.dispatch;
+
+            this.model = model;
+            return (0, _zaitun.html)(
+                'div',
+                null,
+                (0, _zaitun.html)(
+                    'div',
+                    null,
+                    (0, _zaitun.html)(
+                        'button',
+                        { 'on-click': this.optionChanged.bind(this) },
+                        'Change Form State ',
+                        (0, _zaitun.html)('i', { classNames: 'fa fa-home' })
+                    ),
+                    (0, _zaitun.html)(
+                        'button',
+                        { 'on-click': function onClick() {
+                                return TestForm2.showModal(1);
+                            } },
+                        'Show Popup'
+                    )
+                ),
+                (0, _zaitun.html)(TestForm, { model: model.form1, dispatch: _dispatch }),
+                (0, _zaitun.html)(TestForm2, { model: model.form2, dispatch: function dispatch(action) {
+                        return _dispatch({ type: 'form2', payload: action });
+                    } })
+            );
+        }
+    }, {
+        key: 'update',
+        value: function update(model, action) {
+            switch (action.type) {
+                case 'Counter':
+                    model.form1.counter = Counter.update(model.form1.counter, action.action);
+                    return model;
+                case 'CounterList':
+                    model.form1.counterList = CounterList.update(model.form1.counterList, action.action);
+                    return model;
+
+                case 'Todos':
+                    model.form1.todos = TodosCom.update(model.form1.todos, action.action);
+                    return model;
+                case 'form2':
+                    console.log('form-2');
+                    //model.form2=TestForm2.update(model.form2, action.payload);
+                    return model;
+                case 'grid':
+                    model.form1.grid = Grid.update(model.form1.grid, action.action);
+                    return model;
+                default:
+                    return model;
+            }
+        }
+    }, {
+        key: 'optionChanged',
+        value: function optionChanged() {
+            //this.options.inputs[0][0].hide=true;
+            //this.options.inputs[4].tabs.tab1.hide=false;
+            //this.options.inputs[4].tabs.tab1.disabled=false;
+            //JuForm.refresh();
+            this.model.form1.options.inputs[2].tabs['I was Hidden'].hide = false;
+            TestForm.findTab('Disabled')[0].disabled = false;
+            TestForm.setSelectData('gender', [{ text: 'Male--', value: 1 }, { text: 'Female--', value: 2 }]);
+            //JuForm.showModal(true);
+            console.log(TestForm.getFormData());
+            TestForm.setFormData({ name: 'Abdulla-up', ox: { age: 2.2 }, gender: 1, age2: '02/29/2000' }).refresh();
+
+            console.log(TestForm.getFormData());
+        }
+    }]);
+
+    return FormExample;
+}();
+
+exports.default = FormExample;
+
+},{"./Counter":15,"./CounterList":16,"./todos/todos":22,"./ui/juForm":23,"./ui/juGrid":24,"zaitun":4}],18:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /** @jsx html */
+
+var _zaitun = require('zaitun');
+
+var _juGrid = require('./ui/juGrid');
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var GridExample = function () {
+    function GridExample() {
+        _classCallCheck(this, GridExample);
+
+        console.log('gridExample constructor');
+        this.Grid = new _juGrid.juGrid();
+    }
+
+    _createClass(GridExample, [{
+        key: 'init',
+        value: function init() {
+            return { gridOptions: this.getGridOptions() };
+        }
+    }, {
+        key: 'onViewInit',
+        value: function onViewInit(model, dispatch) {
+            var countries = [{ text: 'Bangladesh', value: 1 }, { text: 'Pakistan', value: 2 }, { text: 'Uzbekistan', value: 3 }];
+            this.Grid.setSelectData(4, countries);
+        }
+    }, {
+        key: 'view',
+        value: function view(_ref) {
+            var model = _ref.model,
+                dispatch = _ref.dispatch;
+
+            return (0, _zaitun.h)('div', [(0, _zaitun.h)('b', 'Grid Example'), this.Grid.view({ model: model.gridOptions, dispatch: dispatch })]);
+        }
+    }, {
+        key: 'update',
+        value: function update(model, action) {
+            switch (action.type) {
+                default:
+                    return model;
+            }
+        }
+    }, {
+        key: 'formClass',
+        value: function formClass() {
+            return { 'form-control': 1, 'form-control-sm': 1 };
+        }
+    }, {
+        key: 'getGridOptions',
+        value: function getGridOptions() {
+            var _this = this;
+
+            var emptyObj = { name: '', age: 16, address: '', single: false, country: '' };
+            return {
+                tableClass: '.table-sm.table-bordered.xtable-responsive',
+                headerClass: '.thead-default',
+                footerClass: '.thead-default',
+                pager: { pageSize: 5, linkPages: 10, enablePowerPage: 0, nav: 1, search: 1, pagerInfo: 1, elmSize: 'sm' },
+                hideHeader: !true,
+                hideFooter: !true,
+                hidePager: !true,
+                //aes:true, //disallowed empty selection --default false
+                pagerPos: 'top', //top|bottom|both --default both
+                //pageChange:data=>Grid.selectRow(0),
+                singleSelect: true,
+                //multiSelect:true,
+                selectedRows: function selectedRows(rows, ri, ev) {
+                    //this.selectedRow.editable=false;
+                    //rows.editable=true;
+                    _this.selectedRow = rows;
+                },
+                aews: true, //apply Editable When Selected - default true 
+                recordChange: function recordChange(row, col, ri, ev) {
+                    _this.Grid.refresh();
+                },
+                //on:{click:(row, i, ev)=>{console.log(row, i, ev)}},
+                //style:(row, i)=>({color:'gray'}),
+                //class:(row, i)=>({hide:1}),          
+                columns: [{ header: 'Name', hClass: '.max', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, focus: true, field: 'name', type: 'text' }, { header: 'Age', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, editPer: function editPer(row) {
+                        return false;
+                    }, field: 'age', type: 'number', tnsValue: function tnsValue(val) {
+                        return val + ' - formated';
+                    } }, { header: 'Birth Date', sort: true, iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, field: 'address', type: 'date' }, { id: 4, header: 'Country', iopts: { class: function _class(r) {
+                            return _this.formClass();
+                        } }, field: 'country', type: 'select' }, { header: 'Single?', field: 'single', type: 'checkbox', tnsValue: function tnsValue(val) {
+                        return val ? 'Yes' : 'No';
+                    } }],
+                xheaders: [[{ text: 'Name', props: { colSpan: 3 } }, { text: 'Country', props: { colSpan: 2 } }]],
+                footers: [
+                //[{text:'footer1',style:col=>({color:'red'})},{text:'footer1',props:{colSpan:4}}],
+                [{ cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            'Total Rows: ',
+                            data.length
+                        );
+                    } }, { cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'div',
+                            null,
+                            (0, _zaitun.html)(
+                                'button',
+                                { 'on-click': function onClick() {
+                                        return _this.Grid.addRow(_extends({}, emptyObj)).refresh();
+                                    } },
+                                'Add ',
+                                (0, _zaitun.html)('i', { classNames: 'fa fa-plus' })
+                            ),
+                            '\xA0',
+                            (0, _zaitun.html)(
+                                'button',
+                                { disabled: _this.Grid.data.length === 0, 'on-click': function onClick() {
+                                        return confirm('Remove sure?') && _this.Grid.removeRow(_this.selectedRow).pager.clickPage(_this.Grid.pager.activePage);
+                                    } },
+                                'Remove ',
+                                (0, _zaitun.html)('i', { classNames: 'fa fa-trash' })
+                            )
+                        );
+                    }
+                }, { props: { colSpan: 2 }, cellRenderer: function cellRenderer(d) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            'Total Selected Rows: ',
+                            d.filter(function (_) {
+                                return _.selected;
+                            }).length
+                        );
+                    } }, { cellRenderer: function cellRenderer(data) {
+                        return (0, _zaitun.html)(
+                            'b',
+                            null,
+                            data.reduce(function (a, b) {
+                                return a + (b.single ? 1 : 0);
+                            }, 0)
+                        );
+                    } }]]
+            };
+        }
+    }]);
+
+    return GridExample;
+}();
+
+exports.default = GridExample;
+
+},{"./ui/juGrid":24,"zaitun":4}],19:[function(require,module,exports){
 'use strict';
 
 var _zaitun = require('zaitun');
@@ -1669,13 +1914,13 @@ var _devTool = require('zaitun/devTool/devTool');
 
 var _devTool2 = _interopRequireDefault(_devTool);
 
-var _clsCounter = require('./clsCounter');
+var _Counter = require('./Counter');
 
-var _clsCounter2 = _interopRequireDefault(_clsCounter);
+var _Counter2 = _interopRequireDefault(_Counter);
 
-var _clsCounterList = require('./clsCounterList');
+var _CounterList = require('./CounterList');
 
-var _clsCounterList2 = _interopRequireDefault(_clsCounterList);
+var _CounterList2 = _interopRequireDefault(_CounterList);
 
 var _todos = require('./todos/todos');
 
@@ -1685,24 +1930,29 @@ var _FormExample = require('./FormExample');
 
 var _FormExample2 = _interopRequireDefault(_FormExample);
 
+var _GridExample = require('./GridExample');
+
+var _GridExample2 = _interopRequireDefault(_GridExample);
+
 var _mainCom = require('./mainCom');
 
 var _mainCom2 = _interopRequireDefault(_mainCom);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var routes = [{ path: "/counter", component: _clsCounter2.default }, { path: '/counterList', component: _clsCounterList2.default }, { path: '/todos', component: _todos2.default }, { path: '/formExample', component: _FormExample2.default, cache: true }];
+var routes = [{ path: "/counter", component: _Counter2.default },
+//loadComponent working in webpack(https://github.com/JUkhan/zaitun-starter-kit)
+//{path:'/counterList', loadComponent:()=>System.import('./clsCounterList')},
+{ path: '/counterList', component: _CounterList2.default }, { path: '/todos', component: _todos2.default }, { path: '/formExample', component: _FormExample2.default }, { path: '/gridExample', component: _GridExample2.default, cache: true }];
 
 (0, _zaitun.bootstrap)({
   containerDom: '#app',
   mainComponent: _mainCom2.default,
-  //locationStrategy:'hash',
   routes: routes,
-  activePath: '/counter',
-  devTool: _devTool2.default
+  activePath: '/counter'
 });
 
-},{"./FormExample":15,"./clsCounter":16,"./clsCounterList":17,"./mainCom":19,"./todos/todos":21,"zaitun":13,"zaitun/devTool/devTool":12}],19:[function(require,module,exports){
+},{"./Counter":15,"./CounterList":16,"./FormExample":17,"./GridExample":18,"./mainCom":20,"./todos/todos":22,"zaitun":4,"zaitun/devTool/devTool":3}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1756,7 +2006,7 @@ function update(model, action) {
 
 exports.default = { init: init, view: view, update: update };
 
-},{"zaitun":13}],20:[function(require,module,exports){
+},{"zaitun":4}],21:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1870,7 +2120,7 @@ exports.Task = Task;
 exports.Toggle = Toggle;
 //export default Task;
 
-},{"zaitun":13}],21:[function(require,module,exports){
+},{"zaitun":4}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2110,7 +2360,7 @@ var Todos = function () {
 
 exports.default = Todos;
 
-},{"./task":20,"zaitun":13}],22:[function(require,module,exports){
+},{"./task":21,"zaitun":4}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2126,7 +2376,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _zaitun = require('zaitun');
 
-var _utils = require('../utils');
+var _utils = require('./utils');
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
@@ -2188,9 +2438,10 @@ var juForm = function () {
     }, {
         key: 'modalClose',
         value: function modalClose() {
-            this.showModal(false);
             if (typeof this.options.modalClose === 'function') {
-                this.options.modalClose();
+                this.options.modalClose() && this.showModal(false);
+            } else {
+                this.showModal(false);
             }
         }
     }, {
@@ -2199,7 +2450,7 @@ var juForm = function () {
             var _this2 = this;
 
             var buttons = this.options.buttons || [];
-            return (0, _zaitun.h)('div.modal', { props: { id: id } }, [(0, _zaitun.h)('div.modal-dialog', { role: 'document' }, [(0, _zaitun.h)('div.modal-content', [(0, _zaitun.h)('div.modal-header', [(0, _zaitun.h)('div.modal-title', this.options.title || ''), (0, _zaitun.h)('button.close', { data: { dismiss: 'modal' }, aria: { label: 'Close' }, on: { click: function click(e) {
+            return (0, _zaitun.h)('div.modal', { props: { id: id } }, [(0, _zaitun.h)('div.modal-dialog.modal-' + this.options.size, { role: 'document' }, [(0, _zaitun.h)('div.modal-content', [(0, _zaitun.h)('div.modal-header', [(0, _zaitun.h)('div.modal-title', this.options.title || ''), (0, _zaitun.h)('button.close', { data: { dismiss: 'modal' }, aria: { label: 'Close' }, on: { click: function click(e) {
                         return _this2.modalClose();
                     } } }, [(0, _zaitun.h)('span', { aria: { hidden: 'true' } }, '×')])]), (0, _zaitun.h)('div.modal-body', [vnodes]), (0, _zaitun.h)('div.modal-footer', buttons.map(this.createButtonElm.bind(this)))])])]);
         }
@@ -2313,11 +2564,11 @@ var juForm = function () {
                 lies = [],
                 tabcontents = [],
                 tabNames = Object.keys(item.tabs);
-            var tabLink = item.activeTab;
+            item.tabLink = item.activeTab;
             tabNames.forEach(function (tabName) {
-                var tabId = '#' + tabName.replace(/\s+/, '_###_');
-                var disabled = !!item.tabs[tabName].disabled;
-                var hide = !!item.tabs[tabName].hide;
+                var tabId = '#' + tabName.replace(/\s+/, '_###_'),
+                    disabled = !!item.tabs[tabName].disabled,
+                    hide = !!item.tabs[tabName].hide;
                 if (!hide) {
                     lies.push((0, _zaitun.h)('li.nav-item', [(0, _zaitun.h)('a.nav-link', {
                         props: { href: tabId },
@@ -2327,16 +2578,15 @@ var juForm = function () {
                                 if (disabled) {
                                     return;
                                 }
-                                if (tabLink === tabName) {
+                                if (item.tabLink === tabName) {
                                     return;
                                 }
-                                tabLink = tabName;
                                 _this4.selectTab(tabName, item);
                             }
                         }
                     }, tabName)]));
                     //tab contents 
-                    if (tabName === tabLink) {
+                    if (tabName === item.tabLink) {
                         tabcontents.push((0, _zaitun.h)('div.tab-item', _this4.createElements(item.tabs[tabName])));
                     }
                 }
@@ -2372,6 +2622,7 @@ var juForm = function () {
                 if (hasChange) {
                     hasChange(e.target.value, e);
                 }
+                _this5.refresh();
             };
             return events;
         }
@@ -2541,11 +2792,9 @@ var juForm = function () {
                             return res;
                         }
                     } else if (item.type === 'tabs' && _typeof(item.tabs) === 'object') {
-                        var find = Object.keys(item.tabs).find(function (tn) {
-                            return tn === tabName;
-                        });
+                        var find = item.tabs[tabName];
                         if (find) {
-                            return item;
+                            return [find, item];
                         }
                     }
                 }
@@ -2628,33 +2877,39 @@ var juForm = function () {
 
             if (!item) {
                 item = this.findTab(tabName);
+                if (item) {
+                    item = item[1];
+                }
             }
             if (item) {
-                var res = typeof item.click === 'function' ? item.click(tabName) : true;
+                var res = typeof item.tabClick === 'function' ? item.tabClick(tabName, item.activeTab) : true;
                 if (typeof res === 'boolean') {
                     if (res) {
                         item.activeTab = tabName;
-                        this.dispatch({ type: TAB_CLICK, payload: { tabName: tabName, formName: this.options.name || 'oo7' } });
+                        item.tabLink = tabName;
+                        this.dispatch({ type: TAB_CLICK, payload: { tabName: tabName, formName: this.options.name || 'form007' } });
                     }
                 } else if ((typeof res === 'undefined' ? 'undefined' : _typeof(res)) === 'object' && res.then) {
                     res.then(function (isTrue) {
                         if (isTrue) {
                             item.activeTab = tabName;
-                            _this10.dispatch({ type: TAB_CLICK, form: _this10.options.name || 'oo7', payload: { tabName: tabName, formName: _this10.options.name || 'form007' } });
+                            item.tabLink = tabName;
+                            _this10.dispatch({ type: TAB_CLICK, payload: { tabName: tabName, formName: _this10.options.name || 'form007' } });
                         }
                     });
                 }
             }
+            return this;
         }
     }, {
-        key: 'optionsChanged',
-        value: function optionsChanged() {
+        key: 'refresh',
+        value: function refresh() {
             this.dispatch({ type: OPTIONS_CHANGED });
         }
     }, {
         key: 'showModal',
         value: function showModal(isOpen) {
-            $('#' + this.modalId).modal(isOpen ? 'show' : 'hide');
+            if (isOpen) $('#' + this.modalId).modal({ backdrop: false, show: true });else $('#' + this.modalId).modal('hide');
         }
     }, {
         key: 'setSelectData',
@@ -2662,14 +2917,14 @@ var juForm = function () {
             var item = this.findField(fieldName);
             if (item) {
                 item.data = data;
-                this.optionsChanged();
             }
+            return this;
         }
     }, {
         key: 'setFormData',
         value: function setFormData(data) {
             this.model.data = data;
-            this.optionsChanged();
+            return this;
         }
     }, {
         key: 'getFormData',
@@ -2684,7 +2939,7 @@ var juForm = function () {
 exports.juForm = juForm;
 exports.TAB_CLICK = TAB_CLICK;
 
-},{"../utils":25,"zaitun":13}],23:[function(require,module,exports){
+},{"./utils":26,"zaitun":4}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2700,7 +2955,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _zaitun = require('zaitun');
 
-var _juPager = require('../juPager');
+var _juPager = require('./juPager');
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
@@ -2709,7 +2964,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 var DATA_CHANGE = Symbol('SET_DATA');
 var PAGER_ACTION = Symbol('pager_action');
 var REFRESH = Symbol('REFRESH');
-//const Pager=new juPage();
 
 var juGrid = function () {
     function juGrid() {
@@ -2732,11 +2986,14 @@ var juGrid = function () {
         value: function view(_ref) {
             var model = _ref.model,
                 dispatch = _ref.dispatch;
-            console.log('grid-view');
+
             this.dispatch = dispatch;
             this.model = model;
-            if (!model.columns) {
+            if (this._isUndef(model.columns)) {
                 return (0, _zaitun.h)('div', 'columns undefined');
+            }
+            if (this._isUndef(model.aews)) {
+                model.aews = true;
             }
             this._initPaager(model);
             var table = (0, _zaitun.h)('table.table' + (this.model.tableClass || ''), [this._header(model), this._body(model), this._footer(model)]);
@@ -2912,6 +3169,11 @@ var juGrid = function () {
             return p === undefined;
         }
     }, {
+        key: '_check_apply_editable_when_selected',
+        value: function _check_apply_editable_when_selected(row) {
+            return this.model.aews ? row.selected : row.editable;
+        }
+    }, {
         key: '_cellValue',
         value: function _cellValue(row, col, ri) {
             var _this4 = this;
@@ -2932,7 +3194,7 @@ var juGrid = function () {
                 switch (col.type) {
                     case 'select':
                         var data = col[col.field + '_data'] || [];
-                        return row.selected ? [(0, _zaitun.h)('select', {
+                        return this._check_apply_editable_when_selected(row) ? [(0, _zaitun.h)('select', {
                             hook: { insert: function insert(vnode) {
                                     return _this4._focus(col, vnode.elm);
                                 } },
@@ -2944,7 +3206,7 @@ var juGrid = function () {
                             return (0, _zaitun.h)('option', { props: { value: d.value } }, d.text);
                         }))] : this._transformValue(row[col.field], row, col);
                     case 'checkbox':
-                        return row.selected ? [(0, _zaitun.h)('input', {
+                        return this._check_apply_editable_when_selected(row) ? [(0, _zaitun.h)('input', {
                             hook: { insert: function insert(vnode) {
                                     return _this4._focus(col, vnode.elm);
                                 } },
@@ -2954,7 +3216,7 @@ var juGrid = function () {
                             props: _extends({}, this._bindProps(row, ri, col.iopts), { type: col.type, checked: row[col.field] })
                         })] : this._transformValue(row[col.field], row, col);
                     default:
-                        return row.selected ? [(0, _zaitun.h)('input', {
+                        return this._check_apply_editable_when_selected(row) ? [(0, _zaitun.h)('input', {
                             hook: { insert: function insert(vnode) {
                                     return _this4._focus(col, vnode.elm);
                                 } },
@@ -3417,7 +3679,7 @@ var juGrid = function () {
 
 exports.juGrid = juGrid;
 
-},{"../juPager":24,"zaitun":13}],24:[function(require,module,exports){
+},{"./juPager":25,"zaitun":4}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3499,7 +3761,7 @@ var juPage = function () {
                     } } }, 'End')])]))]);
             var info = (0, _zaitun.h)('div.page-size', [(0, _zaitun.h)('span', 'Page Size'), (0, _zaitun.h)('select.form-control.form-control-' + model.elmSize, { props: { value: this.model.pageSize }, on: { change: function change(e) {
                         return _this._changePageSize(e.target.value);
-                    } } }, [(0, _zaitun.h)('option', { props: { value: 5 } }, '5'), (0, _zaitun.h)('option', { props: { value: 10 } }, '10'), (0, _zaitun.h)('option', { props: { value: 15 } }, '15'), (0, _zaitun.h)('option', { props: { value: 20 } }, '20'), (0, _zaitun.h)('option', { props: { value: 25 } }, '25'), (0, _zaitun.h)('option', { props: { value: 30 } }, '30'), (0, _zaitun.h)('option', { props: { value: 50 } }, '50'), (0, _zaitun.h)('option', { props: { value: 100 } }, '100')]), (0, _zaitun.h)('span', 'Page ' + this.activePage + ' of ' + this.totalPage)]);
+                    } } }, [(0, _zaitun.h)('option', { props: { value: 5 } }, '5'), (0, _zaitun.h)('option', { props: { value: 10 } }, '10'), (0, _zaitun.h)('option', { props: { value: 15 } }, '15'), (0, _zaitun.h)('option', { props: { value: 20 } }, '20'), (0, _zaitun.h)('option', { props: { value: 25 } }, '25'), (0, _zaitun.h)('option', { props: { value: 30 } }, '30'), (0, _zaitun.h)('option', { props: { value: 50 } }, '50'), (0, _zaitun.h)('option', { props: { value: 100 } }, '100')]), (0, _zaitun.h)('span', 'Page ' + (this.totalPage ? this.activePage : 0) + ' of ' + this.totalPage)]);
             var elms = [];
             if (model.pagerInfo) {
                 elms.push((0, _zaitun.h)('div.col-12.col-md-auto', [info]));
@@ -3755,7 +4017,7 @@ var juPage = function () {
 
 exports.juPage = juPage;
 
-},{"zaitun":13}],25:[function(require,module,exports){
+},{"zaitun":4}],26:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3771,4 +4033,4 @@ function guid() {
 
 exports.guid = guid;
 
-},{}]},{},[18]);
+},{}]},{},[19]);

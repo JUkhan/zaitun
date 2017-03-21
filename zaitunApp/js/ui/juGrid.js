@@ -12,7 +12,7 @@ class juGrid{
     init(){
         return {};
     }
-    view({model, dispatch}){console.log('grid-view');
+    view({model, dispatch}){
         this.dispatch=dispatch;
         this.model=model; 
         if(this._isUndef(model.columns)){
