@@ -109,7 +109,10 @@ function ComponentManager(){
     this.run=function(component){        
         this.initMainComponent(component);
         this.model=this.mcom.init(this.dispatch);        
-        this.updateUI();            
+        this.updateUI();
+        if(typeof this.mcom.onViewInit==='function'){
+                this.mcom.onViewInit(this.model, this.dispatch);
+        }            
     }
     this.updateUI=function() {
         var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
