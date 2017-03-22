@@ -3,7 +3,7 @@ Zaitun
 A light weight javascript framework with time-travelling debugger
 ## Installation
 
-Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/5/edit?html,js,output)
+Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/7/edit?html,js,output)
 
 ```sh
 git clone https://github.com/JUkhan/zaitun-starter-kit quickstart
