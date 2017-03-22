@@ -755,7 +755,7 @@ function ComponentManager(){
             this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
             this.updateUI();
             if(typeof this.child.onViewInit==='function'){
-                this.child.onViewInit(this.model, this.dispatch);
+                this.child.onViewInit(this.model, this.dispatch.bind(this));
             } 
             if(this.devTool){
                 this.devTool.reset();
@@ -765,7 +765,10 @@ function ComponentManager(){
     this.run=function(component){        
         this.initMainComponent(component);
         this.model=this.mcom.init(this.dispatch);        
-        this.updateUI();            
+        this.updateUI();
+        if(typeof this.mcom.onViewInit==='function'){
+                this.mcom.onViewInit(this.model, this.dispatch.bind(this));
+        }            
     }
     this.updateUI=function() {
         var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
