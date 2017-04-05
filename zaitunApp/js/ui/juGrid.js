@@ -1,5 +1,6 @@
 import {h} from 'zaitun';
 import {juPage} from './juPager';
+import {s4} from './utils';
 const DATA_CHANGE=Symbol('SET_DATA');
 const PAGER_ACTION=Symbol('pager_action');
 const REFRESH=Symbol('REFRESH');
@@ -8,6 +9,8 @@ class juGrid{
     constructor(){
         this.data=[];
         this.pager=new juPage();
+        this.__loaded=false;
+        this.__id=s4(); 
     }   
     init(){
         return {};
@@ -18,6 +21,16 @@ class juGrid{
         if(this._isUndef(model.columns)){
             return h('div','columns undefined');
         }
+        model.columns.forEach(col=>{
+            if(col.type==='select'){
+                if(this._isUndef(col.valueProp)){
+                    col.valueProp='value';
+                }
+                if(this._isUndef(col.textProp)){
+                    col.textProp='text';
+                }
+            }
+        });
         if(this._isUndef(model.aews)){
             model.aews=true;
         }
@@ -27,11 +40,18 @@ class juGrid{
             this._body(model),
             this._footer(model)
         ]);
+        if(!this.__loaded){            
+            if(typeof this.model.onLoad==='function'){
+                let tid=setTimeout(()=>{this.model.onLoad();clearTimeout(tid);});
+            }
+            this.__loaded=true;
+        }
         return h('div.juGrid',[
             this._getPager(model.pager, dispatch, 'top'),
             table,
             this._getPager(model.pager, dispatch, 'bottom'),
             ]);
+        
     }
     update(model, action){ 
         switch (action.type) {
@@ -52,9 +72,12 @@ class juGrid{
         if(this._isUndef(model.pagerPos)){
             model.pagerPos='both';
         }
-         if(this._isUndef(model.pager.nav)){
+        if(this._isUndef(model.pager.nav)){
             model.pager.nav=true;
-         }
+        }
+        if(typeof model.pager.sspFn==='function'){
+            this.pager.sspFn=model.pager.sspFn;
+        }
         if(this._isUndef(model.pager.searchFn)){
            model.pager.searchFn=(data, val)=>{
                 const res=[], columns=this.model.columns, len=columns.length;
@@ -122,7 +145,7 @@ class juGrid{
         }
         return h('thead'+(this.model.headerClass||''),[
                 ...this._Extraheaders(model),
-                h('tr',model.columns.filter(col=>!col.hide).map((col, index)=>h('th'+(col.hClass||''),{key:index, on:{click:()=>this._sort(col)}}, [col.sort?h('i.fa',{class:this._sortIcon(col)}):'',col.header])))
+                h('tr',model.columns.filter(col=>!col.hide).map((col, index)=>h('th'+(col.hClass||''),{key:this.__id+index, on:{click:()=>this._sort(col)}}, [col.sort?h('i.fa',{class:this._sortIcon(col)}):'',col.header])))
             ])
     }    
     _body(model){
@@ -195,7 +218,7 @@ class juGrid{
                        class:this._bindClass(row, ri, col.iopts),
                        props:{...this._bindProps(row, ri, col.iopts), value:row[col.field]}
                     },
-                    data.map(d=>h('option',{props:{value:d.value}}, d.text))
+                    data.map(d=>h('option',{props:{value:d[col.valueProp]}}, d[col.textProp]))
                     )
                     ]
                     :this._transformValue(row[col.field], row, col)
@@ -232,12 +255,12 @@ class juGrid{
         }
         val=val.toString();
         if(Array.isArray(data)){
-            const item=data.find(_=>_.value.toString()===val);
+            const item=data.find(_=>_[col.valueProp].toString()===val);
             if(item){
-                return item.text;
+                return item[col.textProp];
             }
         }
-        return '';
+        return val;
     }
     _transformValue(val, row, col, ri){
         if(col.type==='select'){
@@ -391,7 +414,7 @@ class juGrid{
             }
             return classObj;
         }else{
-            const classObj= {};
+            const classObj=reciver.class?{...reciver.class}:{};
             if(reciver.singleSelect||reciver.multiSelect){
                 classObj.selected=row.selected;
             }
@@ -400,10 +423,10 @@ class juGrid{
        
     }
     _bindStyle(row, ri, reciver){
-        return typeof reciver.style === 'function'?reciver.style(row, ri):undefined
+        return typeof reciver.style === 'function'?reciver.style(row, ri):reciver.style
     }
     _bindProps(row, ri, reciver){
-        return typeof reciver.props === 'function'?reciver.props(row, ri):{}
+        return typeof reciver.props === 'function'?reciver.props(row, ri):reciver.props||{}
     }
     _Extraheaders(model){
         if(!model.headers){
@@ -441,7 +464,7 @@ class juGrid{
             if(!this.model.hidePager && !this.pager.sspFn){
                 return  [col.cellRenderer(this.pager.data||[], this.data||[], ri)];
             }
-            return  [col.cellRenderer(this.data||[], ri)];
+            return  [col.cellRenderer(this.data||[], this.pager, ri)];
         }
         return col.text;        
     }  
@@ -508,7 +531,7 @@ class juGrid{
         }
         return this;
     }
-    removeRow(row){         
+    removeRow(row){        
         var index=this.data.indexOf(this.selectedRow);        
         this.data.splice(index, 1)
         if(typeof this.model.pager.sspFn!=='function'){  

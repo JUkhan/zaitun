@@ -101,7 +101,7 @@ class juPage{
         this.firePageChange();
     }   
     firePageChange()
-    {
+    {   
         this.diffPageAction=this.activePage!==this._prevActivePage;
         this._prevActivePage=this.activePage;
         if (this.sspFn)

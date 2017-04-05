@@ -44,8 +44,7 @@ class juForm{
             this.showModal(false);
         }
     }
-    createModal(vnodes, id){ 
-        const buttons=this.options.buttons||[];      
+    createModal(vnodes, id){
         return h('div.modal',{props:{id:id}},[
             h('div.modal-dialog.modal-'+this.options.size,{role:'document'},[
                 h('div.modal-content',[
@@ -56,10 +55,20 @@ class juForm{
                         ])
                         ]),
                     h('div.modal-body', [vnodes]),
-                    h('div.modal-footer',buttons.map(this.createButtonElm.bind(this)))
+                    h('div.modal-footer',this._getModalButtons(this.options.buttons))
                 ])
             ])
         ]);
+    }
+    _getModalButtons(buttons){        
+        if(!buttons) return '';
+        if(typeof buttons ==='function'){
+            return [buttons(this.model)]
+        }
+        else if(Array.isArray(buttons)){
+            return buttons.map(this.createButtonElm.bind(this));
+        }
+        return [this._getVNode(buttons)];
     }
     transformElement(item, index, vnodes){
 
@@ -89,7 +98,7 @@ class juForm{
                         })]));
                         break; 
                   case 'vnode': 
-                        vnodes.push(h(`div.col-md-${elm.size||6}`,[elm.vnode]));
+                        vnodes.push(h(`div.col-md-${elm.size||6}`,[this._getVNode(elm.vnode)]));
                         break;     
                     default:
                         velms.push(...this.createElement(elm, index));
@@ -116,7 +125,7 @@ class juForm{
                  vnodes.push(h(`div.form-group.row`,[this.createLabel(item, index)]));
                 break;  
             case 'vnode': 
-                 vnodes.push(item.vnode);
+                 vnodes.push(this._getVNode(item.vnode));
                 break;  
             case 'component':            
                  vnodes.push(item.component.view({
@@ -178,9 +187,15 @@ class juForm{
         elms.push(h('div.card',[
             h('div.card-header',[ h(`ul.nav nav-tabs card-header-tabs pull-xs-left`, lies)]),
             h('div.card-block', tabcontents),
-            item.footer?h('div.card-footer',[item.footer]):''
+            item.footer?h('div.card-footer',[this._getVNode(item.footer)]):''
         ]))
         return elms;
+    }
+    _getVNode(footer){             
+        if(typeof footer==='function'){
+            return footer(this.model);
+        }
+        return footer;
     }
     getListener(item){
        let events={}, hasChange=null, modelUpdateEvent='input';
