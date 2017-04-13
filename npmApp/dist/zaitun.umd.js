@@ -694,7 +694,8 @@ function ComponentManager(){
     this.key='';
     this.cacheObj={};
    
-   this.initMainComponent=function(component){        
+   this.initMainComponent=function(component){  
+       this.dispatch=this.dispatch.bind(this);      
         if(typeof component ==='object'){
             this.mcom=component;
         }  
@@ -755,7 +756,7 @@ function ComponentManager(){
             this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
             this.updateUI();
             if(typeof this.child.onViewInit==='function'){
-                this.child.onViewInit(this.model, this.dispatch.bind(this));
+                this.child.onViewInit(this.model, this.dispatch);
             } 
             if(this.devTool){
                 this.devTool.reset();
@@ -767,11 +768,11 @@ function ComponentManager(){
         this.model=this.mcom.init(this.dispatch);        
         this.updateUI();
         if(typeof this.mcom.onViewInit==='function'){
-                this.mcom.onViewInit(this.model, this.dispatch.bind(this));
+                this.mcom.onViewInit(this.model, this.dispatch);
         }            
     }
     this.updateUI=function() {
-        var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch.bind(this)});
+        var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch});
         vnode = patch(vnode, newVnode);
     }
 
@@ -831,7 +832,7 @@ var jsx =require('snabbdom-jsx');
 var bootstrap =require('./core');
 var Router =require('./router');
 
-module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router}
+module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router, jsx:jsx}
 },{"./core":11,"./router":13,"snabbdom-jsx":1,"snabbdom/h":2}],13:[function(require,module,exports){
 var Router = {
     routes: [],
@@ -935,8 +936,11 @@ var Router = {
             this.check(this.clearSlashes(this.getFragment()||path));           
         }
     },
-    render:function(route, routeParams, url){   
-        window.activePath=route.path;
+    activeRoute:null,
+    render:function(route, routeParams, url){ 
+        route.routeParams=routeParams;
+        route.navPath=url;  
+        this.activeRoute=route;
         this.CM.runChild(route, routeParams, url);               
     }
 };

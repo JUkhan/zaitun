@@ -100,8 +100,11 @@ var Router = {
             this.check(this.clearSlashes(this.getFragment()||path));           
         }
     },
-    render:function(route, routeParams, url){   
-        window.activePath=route.path;
+    activeRoute:null,
+    render:function(route, routeParams, url){ 
+        route.routeParams=routeParams;
+        route.navPath=url;  
+        this.activeRoute=route;
         this.CM.runChild(route, routeParams, url);               
     }
 };
