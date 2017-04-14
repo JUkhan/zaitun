@@ -100,7 +100,7 @@ var Router = {
             this.check(this.clearSlashes(this.getFragment()||path));           
         }
     },
-    activeRoute:null,
+    activeRoute:{},
     render:function(route, routeParams, url){ 
         route.routeParams=routeParams;
         route.navPath=url;  
