@@ -12,17 +12,18 @@ export class Actions extends Subject{
         return filter.call(this,((action)=>Boolean(types.find(type=>type===action.type))));
     }
 }
-export class EffectSubscription extends Subscription{
-    constructor(comDispatch){
-        super();
-        this.comDispatch=comDispatch;
-    }
+export class EffectSubscription extends Subscription{    
+    constructor(){
+        super();        
+    }    
     addEffect(actionStream){
         this.add(actionStream.subscribe(ac=>{
-            this.comDispatch(ac);
+            if(typeof ac.dispatch==='function'){
+                ac.dispatch(ac);
+            }
         }));
     }
-    add(subscription){
+    addSubs(subscription){
         this.add(subscription);
     }
     dispose(){

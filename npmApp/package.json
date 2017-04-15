@@ -1,6 +1,6 @@
 {
   "name": "zaitun",
-  "version": "1.5.23",
+  "version": "1.5.25",
   "description": "javascript framework",
   "main": "index.js",
   "scripts": {
