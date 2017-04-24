@@ -11,7 +11,7 @@ interface comDef{
 }
 interface childDef{
     child:comDef;
-	actions$:any;
+	action$:any;
 }
 interface RouterDef{
     navigate:(path:string)=>void;

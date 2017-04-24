@@ -11,7 +11,7 @@ export default class GridExample{
     init(){
         return { gridOptions:this.getGridOptions()}
     }
-    onViewInit(model, dispatch){        
+    afterViewRender(model, dispatch){        
         const countries=[
             {text:'Bangladesh', value:1},
             {text:'Pakistan', value:2},

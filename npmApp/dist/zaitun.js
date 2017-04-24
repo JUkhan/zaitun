@@ -755,8 +755,8 @@ function ComponentManager(){
             this.initChildComponent(route.component);
             this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
             this.updateUI();
-            if(typeof this.child.onViewInit==='function'){
-                this.child.onViewInit(this.model, this.dispatch);
+            if(typeof this.child.afterViewRender==='function'){
+                this.child.afterViewRender(this.model, this.dispatch);
             } 
             if(this.devTool){
                 this.devTool.reset();
@@ -767,8 +767,8 @@ function ComponentManager(){
         this.initMainComponent(component);
         this.model=this.mcom.init(this.dispatch);        
         this.updateUI();
-        if(typeof this.mcom.onViewInit==='function'){
-                this.mcom.onViewInit(this.model, this.dispatch);
+        if(typeof this.mcom.afterViewRender==='function'){
+                this.mcom.afterViewRender(this.model, this.dispatch);
         }            
     }
     this.updateUI=function() {

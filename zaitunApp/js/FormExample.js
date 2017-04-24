@@ -29,7 +29,7 @@ export default class FormExample{
        model.grid=this.gridOptions();
        return {form1:model, form2:{options:this.getFormOptions2(), data:{name:'Abdulla'}}};
     }
-    onViewInit(model, dispatch){        
+    afterViewRender(model, dispatch){        
         const countries=[
             {text:'Bangladesh', value:1},
             {text:'Pakistan', value:2},
