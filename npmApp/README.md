@@ -5,7 +5,7 @@
 > Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/12/edit?html,js,output).
 You can also try on your local machine from the following GitHub locations:
 - [zaitun-starter-kit-javascript](https://github.com/JUkhan/zaitun-starter-kit)
-- [zaitun-starter-kit-typescript](tps://github.com/JUkhan/zaitun-starter-kit-typescript)
+- [zaitun-starter-kit-typescript](https://github.com/JUkhan/zaitun-starter-kit-typescript)
 
 ## The Basic Pattern
 The logic of every Zaitun component will break up into three cleanly separated parts:
