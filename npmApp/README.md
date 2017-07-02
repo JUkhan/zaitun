@@ -2,7 +2,7 @@
 > A lightweight blessing fast javascript framework with time-travelling debugger
 
 ## Usage
-> A lightweight blessing fast javascript framework with time-travelling debugger. Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/12/edit?html,js,output).
+>Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/12/edit?html,js,output).
 You can also try on your local machine from the following GitHub locations:
 - [zaitun-starter-kit-javascript](https://github.com/JUkhan/zaitun-starter-kit)
 - [zaitun-starter-kit-typescript](https://github.com/JUkhan/zaitun-starter-kit-typescript)
