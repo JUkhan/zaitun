@@ -1,6 +1,6 @@
 {
   "name": "zaitun",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "javascript framework",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "url": "git+https://github.com/JUkhan/zaitun.git"
   },
   "keywords": [
-    "zaitun"
+    "zaitun", "redux", "elm", "react", "ng-redux"
   ],
   "author": "jasim uddin khan",
   "license": "MIT",

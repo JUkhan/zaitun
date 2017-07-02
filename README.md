@@ -1,6 +1,6 @@
 Zaitun 
 ========
-A light weight javascript framework with time-travelling debugger
+A lightweight blessing fast javascript framework with time-travelling debugger
 ## Installation
 
 Try this [QuickStart example on JS Bin](http://jsbin.com/manurun/7/edit?html,js,output)
@@ -92,7 +92,7 @@ import Counter from './counter';
 });
 ```
  To see how our component can be tested; here is an example using the ‘tape’ testing library
- ```
+ ```javascript
 import test from 'tape';
 import Counter from './counter';
 const counterCom=new Counter();
@@ -191,7 +191,7 @@ update(model, action){
 
 Zaitun provides a `Router` service. We can dynamiclly add/remove routes and navigate to the views.
 
-When we click on a navigation, `Router` resolved the component from the route list and become ready to host. We can find this component from `Router.CM.child`.
+When we click on a navigation, `Router` resolved the component and become ready to host. We can find this component from `Router.CM.child`.
 So, we need a main/root component where nav component(`Router.CM.child`) should be hosted.
 
 The MainCom is defined in its own module ‘mainCom.js’
@@ -259,5 +259,5 @@ The routes are an array of route definitions. This route definition has the foll
     }
     onDestroy(){}
 ```    
-inprogress...
+in-progress...
 
