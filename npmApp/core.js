@@ -3,6 +3,7 @@ var Router =require('./router'),
     vnode=null;
 
 function bootstrap(options){ 
+    
         if(!options.containerDom){
             throw new Error('mountNode must be a css selector or a dom object');
         }
@@ -14,7 +15,8 @@ function bootstrap(options){
         if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
                throw new Error('bootstrap options: mainComponent missing.');
         }
-        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
+        options.cm=ComponentManager;    
+        Router.config(options);             
 } 
 var patch = snabbdom.init([
   require('snabbdom/modules/class'),          // makes it easy to toggle classes
@@ -26,7 +28,7 @@ h =require('snabbdom/h');
 function emptyCom(){
     return {
         init:function(){return {};}, 
-        view:function(obj){return h('div.com-load','loading...');}
+        view:function(obj){ return h('div.com-load','loading...');}
     };
 }
 function ComponentManager(){    
@@ -37,6 +39,7 @@ function ComponentManager(){
     this.devTool=null;
     this.key='';
     this.cacheObj={};
+    this.active_route = null;
    
    this.initMainComponent=function(component){  
        this.dispatch=this.dispatch.bind(this);      
@@ -94,6 +97,7 @@ function ComponentManager(){
             this.updateUI();         
             this.loadCom(route, params, url);
         }else{
+            this.active_route = route;
             this.params=params;
             this.key=route.cache?url:'';
             this.initChildComponent(route.component);
@@ -127,39 +131,67 @@ function ComponentManager(){
             this.devTool.setAction(action, this.model);
         }
     }
-    this.fireDestroyEvent=function(){
-            if(this.key){
-                this.setComponentToCache(this.key, this.child, this.model.child);
-            }
-            if(typeof this.child.onDestroy==='function'){
-                this.child.onDestroy();
-            }
+    this.fireDestroyEvent = function (path, callback) {        
+        var tid=setTimeout(function() {
+           callback(path); 
+           clearTimeout(tid);
+        }, 0); 
+        if (this.key) {
+            this.setComponentToCache(this.key, this.child, this.model.child);
+        }
+        if (typeof this.child.onDestroy === 'function') {
+            this.child.onDestroy();
+        }
 
     }
-    this.destroy=function(path){
-        try{
-               if(this.child && typeof this.child.canDeactivate==='function'){
-                   var res=this.child.canDeactivate();
-                   if(typeof res === 'object' && res.then){
-                       var that=this;
-                       res.then(function(val){
-                            if(val){
-                                 window.location.href=path;
-                                 that.fireDestroyEvent();
+    this.canActive = function (route, callback) {
+        try {
+            if (typeof route.canActivate === 'function') {
+                var ref = new route.canActivate();
+                if (typeof ref.canActivate === 'function') {
+                    var res = ref.canActivate(Router);
+                    if (typeof res === 'object' && res.then) {
+                        res.then(function (val) {
+                            callback(val);
+                        });
+                    } else {
+                        callback(res);
+                    }
+                } else {
+                    callback(true);
+                }
+            } else {
+                callback(true);
+            }
+        } catch (e) {
+            callback(false);
+        }
+    }
+    this.destroy = function (path, callback) {
+        try {
+            if (this.child && typeof this.active_route.canDeactivate === 'function') {
+                var ref = new this.active_route.canDeactivate();
+                if (typeof ref.canDeactivate === 'function') {
+                    var res = ref.canDeactivate(this.child, Router);
+                    if (typeof res === 'object' && res.then) {
+                        var that = this;
+                        res.then(function (val) {
+                            if (val) {                                
+                                that.fireDestroyEvent(path, callback);
                             }
-                       });
-                   }
-                   else if(res){
-                        window.location.href=path;
-                        this.fireDestroyEvent();
-                   }
-               }else{
-                   window.location.href=path;
-                   this.fireDestroyEvent();
-               }
-              }catch(ex){
-                  console.log(ex);
-              }
+                        });
+                    } else if (res) {                        
+                        this.fireDestroyEvent(path, callback);
+                    }
+                } else {                    
+                    this.fireDestroyEvent(path, callback);
+                }
+            } else {               
+                this.fireDestroyEvent(path, callback);
+            }
+        } catch (ex) {
+            console.log(ex);
+        }
     }
     this.getComponentFromCache=function(key){
         return  this.cacheObj[key]||{};

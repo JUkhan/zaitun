@@ -659,6 +659,7 @@ var Router =require('./router'),
     vnode=null;
 
 function bootstrap(options){ 
+    
         if(!options.containerDom){
             throw new Error('mountNode must be a css selector or a dom object');
         }
@@ -670,7 +671,8 @@ function bootstrap(options){
         if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
                throw new Error('bootstrap options: mainComponent missing.');
         }
-        Router.config(options).attach(ComponentManager).listen().setActivePath(options.activePath);     
+        options.cm=ComponentManager;    
+        Router.config(options);             
 } 
 var patch = snabbdom.init([
   require('snabbdom/modules/class'),          // makes it easy to toggle classes
@@ -682,7 +684,7 @@ h =require('snabbdom/h');
 function emptyCom(){
     return {
         init:function(){return {};}, 
-        view:function(obj){return h('div.com-load','loading...');}
+        view:function(obj){ return h('div.com-load','loading...');}
     };
 }
 function ComponentManager(){    
@@ -693,6 +695,7 @@ function ComponentManager(){
     this.devTool=null;
     this.key='';
     this.cacheObj={};
+    this.active_route = null;
    
    this.initMainComponent=function(component){  
        this.dispatch=this.dispatch.bind(this);      
@@ -750,6 +753,7 @@ function ComponentManager(){
             this.updateUI();         
             this.loadCom(route, params, url);
         }else{
+            this.active_route = route;
             this.params=params;
             this.key=route.cache?url:'';
             this.initChildComponent(route.component);
@@ -783,39 +787,67 @@ function ComponentManager(){
             this.devTool.setAction(action, this.model);
         }
     }
-    this.fireDestroyEvent=function(){
-            if(this.key){
-                this.setComponentToCache(this.key, this.child, this.model.child);
-            }
-            if(typeof this.child.onDestroy==='function'){
-                this.child.onDestroy();
-            }
+    this.fireDestroyEvent = function (path, callback) {        
+        var tid=setTimeout(function() {
+           callback(path); 
+           clearTimeout(tid);
+        }, 0); 
+        if (this.key) {
+            this.setComponentToCache(this.key, this.child, this.model.child);
+        }
+        if (typeof this.child.onDestroy === 'function') {
+            this.child.onDestroy();
+        }
 
     }
-    this.destroy=function(path){
-        try{
-               if(this.child && typeof this.child.canDeactivate==='function'){
-                   var res=this.child.canDeactivate();
-                   if(typeof res === 'object' && res.then){
-                       var that=this;
-                       res.then(function(val){
-                            if(val){
-                                 window.location.href=path;
-                                 that.fireDestroyEvent();
+    this.canActive = function (route, callback) {
+        try {
+            if (typeof route.canActivate === 'function') {
+                var ref = new route.canActivate();
+                if (typeof ref.canActivate === 'function') {
+                    var res = ref.canActivate(Router);
+                    if (typeof res === 'object' && res.then) {
+                        res.then(function (val) {
+                            callback(val);
+                        });
+                    } else {
+                        callback(res);
+                    }
+                } else {
+                    callback(true);
+                }
+            } else {
+                callback(true);
+            }
+        } catch (e) {
+            callback(false);
+        }
+    }
+    this.destroy = function (path, callback) {
+        try {
+            if (this.child && typeof this.active_route.canDeactivate === 'function') {
+                var ref = new this.active_route.canDeactivate();
+                if (typeof ref.canDeactivate === 'function') {
+                    var res = ref.canDeactivate(this.child, Router);
+                    if (typeof res === 'object' && res.then) {
+                        var that = this;
+                        res.then(function (val) {
+                            if (val) {                                
+                                that.fireDestroyEvent(path, callback);
                             }
-                       });
-                   }
-                   else if(res){
-                        window.location.href=path;
-                        this.fireDestroyEvent();
-                   }
-               }else{
-                   window.location.href=path;
-                   this.fireDestroyEvent();
-               }
-              }catch(ex){
-                  console.log(ex);
-              }
+                        });
+                    } else if (res) {                        
+                        this.fireDestroyEvent(path, callback);
+                    }
+                } else {                    
+                    this.fireDestroyEvent(path, callback);
+                }
+            } else {               
+                this.fireDestroyEvent(path, callback);
+            }
+        } catch (ex) {
+            console.log(ex);
+        }
     }
     this.getComponentFromCache=function(key){
         return  this.cacheObj[key]||{};
@@ -834,119 +866,211 @@ var Router =require('./router');
 
 module.exports= {h:h, html:jsx.html, svg:jsx.svg, bootstrap:bootstrap, Router:Router, jsx:jsx}
 },{"./core":11,"./router":13,"snabbdom-jsx":1,"snabbdom/h":2}],13:[function(require,module,exports){
-var Router = {
-    routes: [],
-    locationStrategy: 'hash',
-    baseUrl: '/',
-    CM:null,  
-    mainComponent:null,  
-    config: function(options) {
-        this.locationStrategy =  options.locationStrategy == 'history' && !!(history.pushState) ? 'history' : 'hash';
-        this.baseUrl = options.baseUrl ? '/' + this.clearSlashes(options.baseUrl) + '/' : '/';
-        this.mainComponent=options.mainComponent;
-        this.routes=options.routes||[];
-        this.devTool=options.devTool;
-        return this;
-    },
-    getFragment: function() {
+
+var Router = (function (window) {
+    var routes = [],
+        locationStrategy = 'hash',
+        baseUrl = '/',
+        originalUrl = window.location.origin,
+        CM = null,
+        options = {},
+        devTool, _fap = '',
+        mainComponent = null,
+        _router = {activeRoute:{}};
+
+    function clearSlashes(path) {
+        return path.toString().replace(/\/$/, '').replace(/^\//, '');
+    }
+
+    function attach(cm) {
+        CM = new cm();
+        _router.CM = CM;
+        CM.run(mainComponent);
+        if (devTool) {
+            new devTool().setCM(CM);
+        }
+    }
+
+    function getFragment() {        
         var fragment = '';
-        if(this.locationStrategy === 'history') {
-            fragment = this.clearSlashes(decodeURI(location.pathname + location.search));
-            fragment = fragment.replace(/\?(.*)$/, '');
-            fragment = this.baseUrl != '/' ? fragment.replace(this.baseUrl, '') : fragment;
+        if (locationStrategy === 'history') {
+            fragment = window.location.href.replace(originalUrl + baseUrl, '');
         } else {
             var match = window.location.href.match(/#(.*)$/);
             fragment = match ? match[1] : '';
         }
-        return this.clearSlashes(fragment);
-    },
-    clearSlashes: function(path) {
-        return path.toString().replace(/\/$/, '').replace(/^\//, '');
-    },
-    attach:function(cm){
-        this.CM=new cm();
-        this.CM.run(this.mainComponent);
-        if(this.devTool){           
-           new this.devTool().setCM(this.CM);
-        }   
-        return this;
-    },
-    add: function(router) {        
-        this.routes.push(router);
-        return this;
-    },
-    remove: function(pathName) {
-        this.routes=this.routes.filter(function(it){return it.path!==pathName;});
-        return this;
-    },   
-    check: function (hash) {
-        var keys, match, routeParams;
-        for (var i = 0, max = this.routes.length; i < max; i++ ) {
-            if(this.clearSlashes(this.routes[i].path)===hash){
-                this.render(this.routes[i], null, hash);
-                return this;
+        if(!fragment && options.activePath){fragment=options.activePath;}       
+        return clearSlashes(fragment);
+    }
+
+    function listen() {
+        var checkCalled = false;
+        window.addEventListener("popstate", function (ev) {            
+            checkCalled = true;
+            check(getFragment());
+        }, false);
+        window.addEventListener("hashchange", function (ev) {            
+            if (!checkCalled) {                
+                check(getFragment());
             }
-            keys = this.routes[i].path.match(/:([^\/]+)/g);
-            if(keys){
-                routeParams = {}                
-                match = hash.match(new RegExp(this.clearSlashes(this.routes[i].path).replace(/:([^\/]+)/g, "([^\/]*)")));
+            checkCalled = false;
+        }, false);
+
+        Array.from(document.querySelectorAll('a')).forEach(function (it) {
+            it.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                if (clearSlashes(it.href) === clearSlashes(window.location.href)) {
+                    return;
+                }
+                if (it.href.indexOf('#') &&
+                    window.location.href.indexOf('#') === -1 &&
+                    window.location.href.replace(/#(.*)$/, '') + '#' + _fap === it.href) {
+                    return;
+                }
+                destroy(it.href, getRoute(it.href));
+            }, false);
+        });
+    }
+
+    function destroy(path, route) {
+        CM.canActive(route, function (isActive) {
+            if (isActive) {
+                route._ca_checked = true;
+                CM.destroy(path, function (path) {
+                    if (locationStrategy === 'hash') {
+                        window.location.href = path;
+                    } else {
+                        path = path.replace(originalUrl + baseUrl, '');
+                        history.pushState({
+                            x: 1
+                        }, null, baseUrl + clearSlashes(path));
+                        check(path);
+                    }
+                });
+            }
+        });
+    }
+
+    function getRoute(hash) {
+        var keys, match;
+        if (hash.indexOf('#') !== -1) {
+            match = hash.match(/#(.*)$/);
+            hash = match ? match[1] : '';
+        } else if(locationStrategy==='history'){
+            hash = hash.replace(originalUrl + baseUrl, '');
+        }
+        hash = clearSlashes(hash);
+        for (var i = 0, max = routes.length; i < max; i++) {
+            if (clearSlashes(routes[i].path) === hash) {
+                return routes[i];
+            }
+            keys = routes[i].path.match(/:([^\/]+)/g);
+            if (keys) {
+                match = hash.match(new RegExp(clearSlashes(routes[i].path).replace(/:([^\/]+)/g, "([^\/]*)")));
+                if (match) {
+                    return routes[i];
+                }
+            }
+        }
+        return null;
+    }
+
+    function check(hash) {
+        var keys, match, routeParams;
+        for (var i = 0, max = routes.length; i < max; i++) {
+            if (clearSlashes(routes[i].path) === hash) {
+                render(routes[i], null, hash);
+                return;
+            }
+            keys = routes[i].path.match(/:([^\/]+)/g);
+            if (keys) {
+                routeParams = {}
+                match = hash.match(new RegExp(clearSlashes(routes[i].path).replace(/:([^\/]+)/g, "([^\/]*)")));
                 if (match) {
                     match.shift();
                     match.forEach(function (value, i) {
                         routeParams[keys[i].replace(":", "")] = value;
                     });
-                    this.render(this.routes[i], routeParams, hash);                  
-                    return this;
+                    render(routes[i], routeParams, hash);
+                    return;
                 }
             }
         }
-        return this;
-    },       
-    listen: function() {
-        var that=this;
-        window.addEventListener("hashchange", function(ev){             
-             that.check(that.getFragment());
-        }, false);
-
-        Array.from(document.querySelectorAll('a')).forEach(function(it){
-            it.addEventListener('click',function(ev){
-               ev.preventDefault();
-               if(that.clearSlashes(it.href)===that.clearSlashes(window.location.href)) {return;}
-               if(it.href.indexOf('#') 
-                    && window.location.href.indexOf('#')===-1
-                    && window.location.href.replace(/#(.*)$/, '') + '#' + that._fap===it.href){return;}
-               that.CM.destroy(it.href); 
-            },false);
-        })
-        return this;
-    },
-    navigate: function(path) {
-        path = path ? path : '';
-        if(this.locationStrategy === 'history') {
-            history.pushState(null, null, this.baseUrl + this.clearSlashes(path));
-        } else {
-            this.CM.destroy(window.location.href.replace(/#(.*)$/, '') + '#' + path);
-        }
-        return this;
-    },    
-    _fap:'',   
-    setActivePath:function(path){  
-        if(path){ 
-            if(!this._fap){this._fap=path[0]==='/'?path:'/'+path;}            
-            this.check(this.clearSlashes(this.getFragment()||path));           
-        }
-    },
-    activeRoute:{},
-    render:function(route, routeParams, url){ 
-        route.routeParams=routeParams;
-        route.navPath=url;  
-        this.activeRoute=route;
-        this.CM.runChild(route, routeParams, url);               
+        return;
     }
-};
 
+    function setActivePath(path) {
+        if (path) {
+            if (!_fap) {
+                _fap = path[0] === '/' ? path : '/' + path;
+            }
+            check(clearSlashes(getFragment() || path));
+        }
+    }
 
-//export default Router;
-module.exports=Router;
+    function render(route, routeParams, url) {
+        if (route._ca_checked) {
+            renderHelper(route, routeParams, url);
+        } else {
+            CM.canActive(route, function (isActive) {
+                if (isActive) {
+                    renderHelper(route, routeParams, url);
+                }
+            });
+        }
+
+    }
+
+    function renderHelper(route, routeParams, url) {
+        route._ca_checked = false;
+        route.routeParams = routeParams;
+        route.navPath = url;
+        _router.activeRoute = {
+            routeParams: routeParams,
+            path: route.path,
+            navPath: url,
+            data: route.data || {}
+        };
+        CM.runChild(route, routeParams, url);
+    }
+
+    _router.config = function (_options) {
+        options = _options;
+        locationStrategy = options.locationStrategy == 'history' && !!(history.pushState) ? 'history' : 'hash';
+        baseUrl = options.baseUrl ? '/' + clearSlashes(options.baseUrl) + '/' : '/';
+        mainComponent = options.mainComponent;
+        routes = options.routes || [];
+        devTool = options.devTool;
+        attach(options.cm);
+        listen();
+        setActivePath(options.activePath);
+        return this;
+    }
+    _router.add = function (router) {
+        routes.push(router);
+
+    }
+    _router.remove = function (pathName) {
+        this.routes = this.routes.filter(function (it) {
+            return it.path !== pathName;
+        });
+    }
+    _router.navigate = function (path) {
+        var tid = setTimeout(function () {            
+            path = path ? path : '';
+            if (locationStrategy === 'history') {
+                history.pushState(null, null, baseUrl + clearSlashes(path));
+                destroy(baseUrl + clearSlashes(path), getRoute(path));
+            } else {
+                destroy(window.location.href.replace(/#(.*)$/, '') + '#' + path, getRoute(path));
+            }
+            clearTimeout(tid);
+        }, 0);
+
+    }
+    return _router;
+})(window);
+
+module.exports = Router;
 },{}]},{},[12])(12)
 });
