@@ -11,12 +11,18 @@ interface comDef{
 }
 interface childDef{
     child:comDef;
-	action$:any;
+    action$:any;    
 }
 interface RouterDef{
     navigate:(path:string)=>void;
     add:(route:any)=>void;
     remove:(path:string)=>void;
+    activeRoute: {
+        routeParams: { [key: string]: any},
+        path: string,
+        navPath: string,
+        data: { [key: string]: any}
+    };
     CM:childDef;
 }
 
