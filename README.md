@@ -259,5 +259,56 @@ The routes are an array of route definitions. This route definition has the foll
     }
     onDestroy(){}
 ```    
-in-progress...
+### v1.6.3
+Remove the `canDeactivate` life cycle hook method. Zaitun’s router provides a feature called Navigation Guards.
+
+- `canActivate`  - Decides if a route can be activated
+- `canDeactivate` - Decides if a route can be deactivated
+>These two methods return `boolen` | `Promise<boolean>`
+```javascript 
+class AuthService{
+    canActivate(router){ 
+      return new Promise(accept=>accept(true));
+
+    }
+    canDeactivate(component, router){ 
+      return component.canDeactivate();
+
+    }
+}
+
+const routes=[
+  {path:'/counter', component:counterCom},
+  {path:'/counterList/:times/:msg', canDeactivate:AuthService, loadComponent:()=>System.import('./counterList')},
+  {path:'/todos',canActivate:AuthService, loadComponent:()=>System.import('./todos/todos')}, 
+  {path:'/animation', loadComponent:()=>System.import('./Animation')}, 
+  {path:'/orderAnimation',loadComponent:()=>System.import('./OrderAnimation')},
+  {path:'/heroAnimation',loadComponent:()=>System.import('./Hero')}
+];
+
+
+```   
+Zaitun provides two types of `locationStrategy` 
+- `hash` (default)
+- `history`
+
+```javascript
+bootstrap({
+  containerDom:'#app',
+  mainComponent:Counter,
+  locationStrategy:'history'//default is hash
+  devTool:devTool
+});
+
+```
+### `hash` type Example
+&lt;a class="nav-link" href="#/counter"&gt;Counter&lt;/a&gt;
+
+### `history` type Example
+&lt;a class="nav-link" href="/counter"&gt;Counter&lt;/a&gt;
+
+But For javascript it is same for both
+```javascript
+    Router.navigate('count')
+```
 
