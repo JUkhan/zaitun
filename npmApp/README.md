@@ -84,6 +84,7 @@ import Counter from './counter';
   devTool:devTool
 });
 ```
+ 
  To see how our component can be tested; here is an example using the ‘tape’ testing library
  ```javascript
 import test from 'tape';
@@ -252,6 +253,54 @@ The routes are an array of route definitions. This route definition has the foll
     }
     onDestroy(){}
 ```    
+### `bootstrap` options
+
+```javascript
+    containerDom: string | any;
+    mainComponent: any;
+    routes?: Array<any>;
+    activePath?: string;
+    devTool?: any;
+    locationStrategy?: 'hash' | 'history';
+    baseUrl?: string;
+    cacheStrategy?: 'session' | 'local' | 'default';
+```
+
+### `Route` options
+
+```javascript
+    path:string;    
+    component?:any;
+    loadComponent?:any;
+    canActivate?:Function;
+    canDeactivate?:Function;
+    cache?:boolean;
+    cacheUpdate_perStateChange?:boolean;
+    cacheStrategy?: 'session' | 'local' | 'default';
+```
+### `Router` methods
+
+```javascript
+    navigate: (path: string) => void;
+    add: (route: any) => void;
+    remove: (path: string) => void;
+    activeRoute: {
+        routeParams: { },
+        path: string,
+        navPath: string,
+        data: { }
+    };
+    CM: ref of ComponentManager;
+```
+### `ComponentManager(CM)` methods
+
+```javascript
+    child: {view, update};
+    action$: any;
+    json_parse:(data:any)=>any;
+    json_stringify:(data:any)=>any;
+    updateCache:()=>any;
+```
 
 ### v1.6.3
 Remove the `canDeactivate` life cycle hook method. Zaitun’s router provides a feature called Navigation Guards.
@@ -305,3 +354,6 @@ But For javascript it is same for both
 ```javascript
     Router.navigate('count')
 ```
+### v1.6.4
+update cache strategy. Please have a look at the `bootstrap` and `route` options and also the `ComponentManager(CM)` methods. Find the example at  [zaitun-starter-kit-typescript](https://github.com/JUkhan/zaitun-starter-kit-typescript)
+

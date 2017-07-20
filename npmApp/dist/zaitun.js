@@ -654,151 +654,224 @@ module.exports = function(sel, data, children, text, elm) {
 };
 
 },{}],11:[function(require,module,exports){
-var Router =require('./router'),
-    snabbdom =require('snabbdom'),
-    vnode=null;
+var Router = require('./router'),
+    snabbdom = require('snabbdom'),
+    vnode = null,
+    cacheStrategy = 'default';
 
-function bootstrap(options){ 
-    
-        if(!options.containerDom){
-            throw new Error('mountNode must be a css selector or a dom object');
-        }
-        if(typeof options.containerDom ==='string'){
-            vnode=document.querySelector(options.containerDom);
-        }else{
-            vnode=options.containerDom;
-        }
-        if(!(typeof options.mainComponent==='object' || typeof options.mainComponent==='function')){            
-               throw new Error('bootstrap options: mainComponent missing.');
-        }
-        options.cm=ComponentManager;    
-        Router.config(options);             
-} 
+function bootstrap(options) {
+
+    if (!options.containerDom) {
+        throw new Error('mountNode must be a css selector or a dom object');
+    }
+    if (typeof options.containerDom === 'string') {
+        vnode = document.querySelector(options.containerDom);
+    } else {
+        vnode = options.containerDom;
+    }
+    if (!(typeof options.mainComponent === 'object' || typeof options.mainComponent === 'function')) {
+        throw new Error('bootstrap options: mainComponent missing.');
+    }
+    options.cm = ComponentManager;
+    Router.config(options);
+    cacheStrategy = options.cacheStrategy;
+}
 var patch = snabbdom.init([
-  require('snabbdom/modules/class'),          // makes it easy to toggle classes
-  require('snabbdom/modules/props'),          // for setting properties on DOM elements
-  require('snabbdom/modules/style'),          // handles styling on elements with support for animations
-  require('snabbdom/modules/eventlisteners'), // attaches event listeners
-]),
-h =require('snabbdom/h');
-function emptyCom(){
+        require('snabbdom/modules/class'), // makes it easy to toggle classes
+        require('snabbdom/modules/props'), // for setting properties on DOM elements
+        require('snabbdom/modules/style'), // handles styling on elements with support for animations
+        require('snabbdom/modules/eventlisteners'), // attaches event listeners
+    ]),
+    h = require('snabbdom/h');
+
+function emptyCom() {
     return {
-        init:function(){return {};}, 
-        view:function(obj){ return h('div.com-load','loading...');}
+        init: function () {
+            return {};
+        },
+        view: function (obj) {
+            return h('div.com-load', 'loading...');
+        }
     };
 }
-function ComponentManager(){    
-    this.mcom={};
-    this.child=emptyCom();
-    this.model={};
-    this.params=null;
-    this.devTool=null;
-    this.key='';
-    this.cacheObj={};
-    this.active_route = null;
-   
-   this.initMainComponent=function(component){  
-       this.dispatch=this.dispatch.bind(this);      
-        if(typeof component ==='object'){
-            this.mcom=component;
-        }  
-        else if(typeof component ==='function'){
-            this.mcom=new component();
+
+function ComponentManager() {
+    var mcom = {},
+        model = {},
+        params = null,
+        key = '',
+        cacheObj = {},
+        active_route = null,
+        _this = this;
+
+    this.devTool = null;
+    this.child = emptyCom();
+
+    function initMainComponent(component) {
+        if (typeof component === 'object') {
+            mcom = component;
+        } else if (typeof component === 'function') {
+            mcom = new component();
         }
-        this.validateCom(this.mcom);
+        validateCom(mcom);
     }
-    this.validateCom=function(com){
-         
-        if(typeof com.init !=='function'){
-            com.init=function(){return {};};            
+
+    function validateCom(com) {
+
+        if (typeof com.init !== 'function') {
+            com.init = function () {
+                return {};
+            };
         }
-        if(typeof com.view !=='function'){
+        if (typeof com.view !== 'function') {
             throw new Error('Component must have a view function.');
+        }
+    }
+
+    function initChildComponent(component) {        
+        //var cd=isInCache(key);
+        // if(cd[0]){
+        //       _this.child=cd[1].instance;
+        //       return cd;
+        // }  
+        if (typeof component === 'object') {
+            _this.child = component;
         }        
+        else if (typeof component === 'function') {
+            _this.child = new component();
+        }
+        validateCom(_this.child);
+        //return cd;
     }
-    this.initChildComponent=function(component){
-            if(typeof component ==='object'){
-                this.child=component;
-            }
-            else if(this.key && this.cacheObj[this.key]){
-                this.child=this.getComponentFromCache(this.key).instance;
-            }  
-            else if(typeof component ==='function'){
-                this.child=new component();
-            }                    
-            this.validateCom(this.child);       
+
+    function loadCom(route, params, url) {
+        route.loadComponent().then(function (com) {
+            route.component = com.default;
+            route.loadComponent = undefined;
+            _this.runChild(route, params, url);
+        });
     }
-    this.reset=function(){
-        this.model=this.mcom.init(this.dispatch, this.params);
-        if(typeof this.child.init ==='function'){
-             this.model.child=this.child.init(this.dispatch, this.params);
-        }       
-        this.updateUI();
-    }
-    this.updateByModel=function(model){
-        this.model=model;
-        this.updateUI();
-    } 
-    this.loadCom=function(route, params, url){
-        var that=this;   
-        route.loadComponent().then(function(com){
-            route.component=com.default;
-            route.loadComponent=undefined;
-			that.runChild(route, params, url);
-		});
-    }   
-    this.runChild=function(route, params, url){           
-        if(typeof route.loadComponent ==='function'){
-            this.child=emptyCom();
-            this.updateUI();         
-            this.loadCom(route, params, url);
-        }else{
-            this.active_route = route;
-            this.params=params;
-            this.key=route.cache?url:'';
-            this.initChildComponent(route.component);
-            this.model.child=(this.key && this.cacheObj[this.key])?this.getComponentFromCache(this.key).state:this.child.init(this.dispatch, params);        
-            this.updateUI();
-            if(typeof this.child.afterViewRender==='function'){
-                this.child.afterViewRender(this.model, this.dispatch);
-            } 
-            if(this.devTool){
-                this.devTool.reset();
-            }
-        }        
-    }
-    this.run=function(component){        
-        this.initMainComponent(component);
-        this.model=this.mcom.init(this.dispatch);        
-        this.updateUI();
-        if(typeof this.mcom.afterViewRender==='function'){
-                this.mcom.afterViewRender(this.model, this.dispatch);
-        }            
-    }
-    this.updateUI=function() {
-        var newVnode = this.mcom.view({model:this.model, dispatch:this.dispatch});
+
+    function updateUI() {
+        var newVnode = mcom.view({
+            model: model,
+            dispatch: dispatch
+        });
         vnode = patch(vnode, newVnode);
     }
 
-    this.dispatch=function(action) {        
-        this.model = this.mcom.update(this.model, action); 
-        this.updateUI(); 
-        if(this.devTool){
-            this.devTool.setAction(action, this.model);
+    function dispatch(action) {
+        model = mcom.update(model, action);
+        updateUI();
+        if (_this.devTool) {
+            _this.devTool.setAction(action, model);
+        } 
+        if(active_route.cache && active_route.cacheUpdate_perStateChange){
+            setComponentToCache(key, _this.child, model.child);           
+        }       
+    }    
+    function fireDestroyEvent(path, callback) {
+        var tid = setTimeout(function () {
+            callback(path);
+            clearTimeout(tid);
+        }, 0);
+        if (key) {            
+            setComponentToCache(key, _this.child, model.child);
         }
-    }
-    this.fireDestroyEvent = function (path, callback) {        
-        var tid=setTimeout(function() {
-           callback(path); 
-           clearTimeout(tid);
-        }, 0); 
-        if (this.key) {
-            this.setComponentToCache(this.key, this.child, this.model.child);
-        }
-        if (typeof this.child.onDestroy === 'function') {
-            this.child.onDestroy();
+        if (typeof _this.child.onDestroy === 'function') {
+            _this.child.onDestroy();
         }
 
+    }
+    function isInCache(key){
+        var data=key?getCacheData():{},
+        hasCache=!!(key && data[key]),
+        res=[hasCache];
+        if(hasCache){
+            res.push(data[key]);
+        }
+        return res;
+    }
+    function getComponentFromCache(key) {
+        var data = getCacheData(); 
+        return data[key] || {};
+    }   
+    function setComponentToCache(key, instance, state) { 
+        var data = getCacheData();
+        data[key] = {
+                instance: instance,
+                state: state
+            };
+        if (getCacheStrategy() === 'session') {
+            sessionStorage.setItem('app_cache', _this.json_stringify(data));
+        } else if (getCacheStrategy() === 'local') {
+            localStorage.setItem('app_cache', _this.json_stringify(data));
+        } else {            
+            cacheObj=data;
+        }
+    }
+
+    function getCacheData() {
+        if (getCacheStrategy() === 'session') {
+            return _this.json_parse(sessionStorage.getItem('app_cache') || '{}');
+        } else if (getCacheStrategy() === 'local') {
+            return _this.json_parse(localStorage.getItem('app_cache') || '{}');
+        }
+        return cacheObj;
+    }
+    function getCacheStrategy(){
+        return active_route.cacheStrategy?active_route.cacheStrategy:cacheStrategy;
+    }
+    this.updateCache=function(){
+        if(key){
+            setComponentToCache(key, _this.child, model.child); 
+        }
+    }
+    this.json_parse=function(data){
+        return JSON.parse(data);
+    }
+    this.json_stringify=function(data){
+        return JSON.stringify(data);
+    }
+    this.reset = function () {
+        model = mcom.init(dispatch, params);
+        if (typeof this.child.init === 'function') {
+            model.child = this.child.init(dispatch, params);
+        }
+        updateUI();
+    }
+    this.updateByModel = function (_model) {
+        model = _model;
+        updateUI();
+    }
+    this.runChild = function (route, _params, url) {
+        if (typeof route.loadComponent === 'function') {
+            this.child = emptyCom();
+            updateUI();
+            loadCom(route, _params, url);
+        } else {
+            active_route = route;
+            params = _params;
+            key = route.cache ? url : '';
+            initChildComponent(route.component);
+            var cd=isInCache(key);
+            model.child = cd[0]? cd[1].state : this.child.init(dispatch, _params);
+            updateUI();
+            if (typeof this.child.afterViewRender === 'function') {
+                this.child.afterViewRender(model, dispatch);
+            }
+            if (this.devTool) {
+                this.devTool.reset();
+            }
+        }
+    }
+    this.run = function (component) {
+        initMainComponent(component);
+        model = mcom.init(dispatch);
+        updateUI();
+        if (typeof mcom.afterViewRender === 'function') {
+            mcom.afterViewRender(model, dispatch);
+        }
     }
     this.canActive = function (route, callback) {
         try {
@@ -825,38 +898,32 @@ function ComponentManager(){
     }
     this.destroy = function (path, callback) {
         try {
-            if (this.child && typeof this.active_route.canDeactivate === 'function') {
-                var ref = new this.active_route.canDeactivate();
+            if (this.child && typeof active_route.canDeactivate === 'function') {
+                var ref = new active_route.canDeactivate();
                 if (typeof ref.canDeactivate === 'function') {
                     var res = ref.canDeactivate(this.child, Router);
                     if (typeof res === 'object' && res.then) {
-                        var that = this;
                         res.then(function (val) {
-                            if (val) {                                
-                                that.fireDestroyEvent(path, callback);
+                            if (val) {
+                                fireDestroyEvent(path, callback);
                             }
                         });
-                    } else if (res) {                        
-                        this.fireDestroyEvent(path, callback);
+                    } else if (res) {
+                        fireDestroyEvent(path, callback);
                     }
-                } else {                    
-                    this.fireDestroyEvent(path, callback);
+                } else {
+                    fireDestroyEvent(path, callback);
                 }
-            } else {               
-                this.fireDestroyEvent(path, callback);
+            } else {
+                fireDestroyEvent(path, callback);
             }
         } catch (ex) {
             console.log(ex);
         }
     }
-    this.getComponentFromCache=function(key){
-        return  this.cacheObj[key]||{};
-    }
-    this.setComponentToCache=function(key, instance, state){
-         this.cacheObj[key]={instance:instance, state:state};
-    }
+
 }
-module.exports=bootstrap;
+module.exports = bootstrap;
 },{"./router":13,"snabbdom":9,"snabbdom/h":2,"snabbdom/modules/class":5,"snabbdom/modules/eventlisteners":6,"snabbdom/modules/props":7,"snabbdom/modules/style":8}],12:[function(require,module,exports){
 
 var h =require('snabbdom/h');
