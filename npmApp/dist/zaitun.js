@@ -799,7 +799,7 @@ function ComponentManager() {
     function setComponentToCache(key, instance, state) { 
         var data = getCacheData();
         data[key] = {
-                instance: instance,
+                //instance: instance,
                 state: state
             };
         if (getCacheStrategy() === 'session') {
