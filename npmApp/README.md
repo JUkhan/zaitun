@@ -355,5 +355,5 @@ But For javascript it is same for both
     Router.navigate('count')
 ```
 ### v1.6.4
-update cache strategy. Please have a look at the `bootstrap` and `route` options and also the `ComponentManager(CM)` methods. Find the example at  [zaitun-starter-kit-typescript](https://github.com/JUkhan/zaitun-starter-kit-typescript)
+update cache strategy. Please have a look at the `bootstrap` and `route` options and also the `ComponentManager(CM)` methods. Find the example from  [zaitun-starter-kit-typescript](https://github.com/JUkhan/zaitun-starter-kit-typescript)
 
